@@ -97,6 +97,13 @@ describe("submit recovery", () => {
     await expect(run(mk(submit))).rejects.toBeInstanceOf(SavedOnDevice);
     expect(submit).toHaveBeenCalledTimes(3);
   });
+  it("the upload itself failing (no signal at all) is also saved on the device, not thrown raw", async () => {
+    const submit = jest.fn(); // never reached: the upload never succeeds
+    const upload = jest.fn().mockRejectedValue(net());
+    await expect(run(mk(submit, upload))).rejects.toBeInstanceOf(SavedOnDevice);
+    expect(submit).not.toHaveBeenCalled();
+    expect(upload).toHaveBeenCalledTimes(3); // same backoff budget as a submit failure
+  });
   it("a missing upload is re-uploaded and the same body resent", async () => {
     const upload = jest.fn().mockResolvedValueOnce("k1").mockResolvedValueOnce("k2");
     const submit = jest.fn().mockRejectedValueOnce(upNotFound("photo")).mockResolvedValueOnce(ok);
