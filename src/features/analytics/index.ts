@@ -1,4 +1,8 @@
-export { AnalyticsOverviewScreen } from "./components/OverviewScreen";
-export { HeatmapScreen } from "./components/HeatmapScreen";
-export { TrendsScreen } from "./components/TrendsScreen";
-export { fillBuckets, parseAnalyticsParams, toAnalyticsFilters } from "./lib/params";
+export { AnalyticsScreen } from "./components/AnalyticsScreen";
+export {
+  fillBuckets,
+  parseAnalyticsParams,
+  parseView,
+  toAnalyticsFilters,
+  type AnalyticsView,
+} from "./lib/params";

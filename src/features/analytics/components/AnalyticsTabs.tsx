@@ -1,25 +1,13 @@
-import { useRouter, type Href } from "expo-router";
+import { useRouter } from "expo-router";
 import { TabStrip } from "@/components/ui";
+import type { AnalyticsView } from "../lib/params";
 
-const ROUTE: Record<string, string> = {
-  overview: "/analytics",
-  heatmap: "/analytics/heatmap",
-  trends: "/analytics/trends",
-};
-
-/** Overview, Heatmap and Trends are routes under /analytics that share one filter state in the URL. */
-export function AnalyticsTabs({
-  current,
-  query,
-}: {
-  current: "overview" | "heatmap" | "trends";
-  query: Record<string, string | undefined>;
-}) {
+/**
+ * Overview, Heatmap and Trends are views of ONE screen, picked by a `view` URL parameter. The tab
+ * strip stays mounted while only the content below it swaps, so its black underline can slide.
+ */
+export function AnalyticsTabs({ current }: { current: AnalyticsView }) {
   const router = useRouter();
-  const qs = Object.entries(query)
-    .filter(([key, value]) => value !== undefined && key !== "blueprintId")
-    .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
-    .join("&");
   return (
     <TabStrip
       label="Analytics"
@@ -29,7 +17,7 @@ export function AnalyticsTabs({
         { value: "trends", label: "Trends" },
       ]}
       value={current}
-      onChange={(tab) => router.replace(`${ROUTE[tab]}${qs ? `?${qs}` : ""}` as Href)}
+      onChange={(view) => router.setParams({ view: view === "overview" ? undefined : view })}
     />
   );
 }

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useEffect, useState } from "react";
+import { useRouter, type Href } from "expo-router";
 import { formatCount } from "@/lib/format";
 import { severityWeight } from "@/lib/labels";
 import { LIMITS } from "@/lib/validation";
@@ -8,8 +8,6 @@ import {
   Card,
   ChipGroup,
   Row,
-  Screen,
-  ScreenHeader,
   SelectField,
   Stack,
   Text,
@@ -25,24 +23,14 @@ import {
   type HeatMetric,
 } from "@/features/blueprints";
 import { useHeatmap } from "../hooks/useAnalytics";
-import {
-  clampCell,
-  parseAnalyticsParams,
-  toAnalyticsFilters,
-  toUrl,
-  type AnalyticsState,
-} from "../lib/params";
-import { AnalyticsFilterBar } from "./AnalyticsFilterBar";
-import { AnalyticsTabs } from "./AnalyticsTabs";
+import { clampCell } from "../lib/params";
+import type { AnalyticsContentProps } from "./types";
 
 const PRESETS = ["25", "50", "100", "200"] as const;
 
 /** Risk heatmap (guide §4.9): a blueprint is required; areas are listed even with zero reports. */
-export function HeatmapScreen() {
+export function HeatmapContent({ state, filters, update }: AnalyticsContentProps) {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const state = useMemo(() => parseAnalyticsParams(params as never), [params]);
-  const filters = useMemo(() => toAnalyticsFilters(state), [state]);
   const list = useBlueprints();
   const blueprintId =
     state.blueprintId ?? list.data?.find((b) => b.isDefault)?.id ?? list.data?.[0]?.id;
@@ -63,8 +51,6 @@ export function HeatmapScreen() {
   }, [cellText]);
 
   const heat = useHeatmap({ ...filters, blueprintId: undefined }, blueprintId, debounced);
-  const update = (patch: Partial<AnalyticsState>) =>
-    router.setParams(toUrl({ ...state, ...patch }));
   const cellInvalid =
     cellText !== "" &&
     (Number(cellText) < 10 || Number(cellText) > 500 || !Number.isFinite(Number(cellText)));
@@ -76,13 +62,7 @@ export function HeatmapScreen() {
 
   const areas = heat.data?.areas ?? [];
   return (
-    <Screen
-      onRefresh={() => void heat.refetch()}
-      refreshing={heat.isRefetching}
-      testID="heatmap-screen"
-    >
-      <ScreenHeader title="Analytics" subtitle="Where reports cluster on the plant." />
-      <AnalyticsTabs current="heatmap" query={toUrl(state)} />
+    <Stack gap={4} testID="heatmap-screen">
       {list.data && list.data.length > 1 ? (
         <SelectField
           label="Blueprint"
@@ -131,8 +111,6 @@ export function HeatmapScreen() {
           testID="heat-numbers"
         />
       </Stack>
-      <AnalyticsFilterBar state={state} onChange={update} />
-
       {list.isError ? <ErrorState error={list.error} onRetry={() => void list.refetch()} /> : null}
       {list.data && list.data.length === 0 ? (
         <EmptyState icon="map" title="No blueprints yet" />
@@ -201,6 +179,6 @@ export function HeatmapScreen() {
           </Card>
         </Stack>
       ) : null}
-    </Screen>
+    </Stack>
   );
 }

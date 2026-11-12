@@ -1,28 +1,14 @@
 import { useMemo } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
 import { formatDate } from "@/lib/format";
-import { Screen, ScreenHeader, Stack, Text } from "@/components/ui";
+import { Stack, Text } from "@/components/ui";
 import { EmptyState, ErrorState, TileSkeleton } from "@/components/feedback";
 import { useTrends } from "../hooks/useAnalytics";
-import {
-  parseAnalyticsParams,
-  toAnalyticsFilters,
-  toUrl,
-  type AnalyticsState,
-} from "../lib/params";
-import { AnalyticsFilterBar } from "./AnalyticsFilterBar";
-import { AnalyticsTabs } from "./AnalyticsTabs";
 import { Breakdown, type BreakdownRow } from "./Breakdown";
+import type { AnalyticsContentProps } from "./types";
 
 /** Reports per week, by hazard category — a persistent hazard shows up as a rising count. */
-export function TrendsScreen() {
-  const router = useRouter();
-  const params = useLocalSearchParams();
-  const state = useMemo(() => parseAnalyticsParams(params as never), [params]);
-  const filters = useMemo(() => toAnalyticsFilters(state), [state]);
+export function TrendsContent({ filters }: AnalyticsContentProps) {
   const query = useTrends(filters, "week");
-  const update = (patch: Partial<AnalyticsState>) =>
-    router.setParams(toUrl({ ...state, ...patch }));
   const data = query.data;
 
   const byWeek: BreakdownRow[] = useMemo(() => {
@@ -48,14 +34,7 @@ export function TrendsScreen() {
   const total = byWeek.reduce((n, row) => n + row.count, 0);
 
   return (
-    <Screen
-      onRefresh={() => void query.refetch()}
-      refreshing={query.isRefetching}
-      testID="trends-screen"
-    >
-      <ScreenHeader title="Trends" subtitle="Reports per week, by hazard type." />
-      <AnalyticsTabs current="trends" query={toUrl(state)} />
-      <AnalyticsFilterBar state={state} onChange={update} />
+    <Stack gap={4} testID="trends-screen">
       {query.isPending ? <TileSkeleton tiles={4} /> : null}
       {query.isError && !data ? (
         <ErrorState error={query.error} onRetry={() => void query.refetch()} />
@@ -71,6 +50,6 @@ export function TrendsScreen() {
           <Breakdown title="By hazard type" testID="by-category" rows={byCategory} />
         </Stack>
       ) : null}
-    </Screen>
+    </Stack>
   );
 }

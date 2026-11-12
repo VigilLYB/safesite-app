@@ -3,6 +3,15 @@ import { lastDays, toApiRange, YMD, type DayRange } from "@/lib/plant-time";
 import { isUuid } from "@/lib/validation";
 
 export type Shift = "A" | "B" | "C";
+
+export type AnalyticsView = "overview" | "heatmap" | "trends";
+const VIEWS: readonly AnalyticsView[] = ["overview", "heatmap", "trends"];
+
+/** Which view of the Analytics screen the URL asks for (`?view=heatmap`). Unknown -> overview. */
+export function parseView(raw: Record<string, string | string[] | undefined>): AnalyticsView {
+  const value = Array.isArray(raw.view) ? raw.view[0] : raw.view;
+  return VIEWS.find((view) => view === value) ?? "overview";
+}
 const SEVERITIES: readonly Severity[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
 export interface AnalyticsState extends DayRange {

@@ -1,5 +1,17 @@
 import { createFakeBackend, type FakeBackend } from "../fake-backend";
-import { cleanup, fireEvent, launch, pathIs, press, tapMap, waitFor } from "../harness";
+import { within } from "@testing-library/react-native";
+import {
+  CAMERA_PATH,
+  PLUS_PATH,
+  cleanup,
+  fireEvent,
+  iconPaths,
+  launch,
+  pathIs,
+  press,
+  tapMap,
+  waitFor,
+} from "../harness";
 
 let be: FakeBackend;
 const M = "manager@plantx.demo";
@@ -87,6 +99,204 @@ describe("Journey: manager analytics", () => {
     expect(
       be.called("GET", "/analytics/heatmap").some((c) => c.query.get("cellSize") === "5"),
     ).toBe(false);
+  });
+});
+
+describe("Journey: manager phone bar and the header Report button", () => {
+  const phone = (url = "/incidents?tab=closure") => launch(be, { as: M, url, phone: true });
+
+  it("the bar is Incidents, Actions, [Analytics], Alerts, Account; Report is not a tab", async () => {
+    const view = await phone();
+    await view.findByTestId("incidents-screen");
+    for (const key of ["incidents", "actions", "analytics", "alerts", "account"]) {
+      expect(await view.findByTestId(`tab-${key}`)).toBeTruthy();
+    }
+    expect(view.queryByTestId("tab-report")).toBeNull();
+    // Analytics is an ordinary tab like the rest: no raised circle of any kind in the bar.
+    expect(view.queryByTestId("primary-fab")).toBeNull();
+    expect(view.queryByTestId("report-fab")).toBeNull();
+  });
+
+  it("there is no Analytics button at the top right of the incidents page any more", async () => {
+    const view = await phone();
+    await view.findByTestId("incidents-screen");
+    expect(view.queryByTestId("open-analytics")).toBeNull();
+  });
+
+  it("the Analytics tab opens Overview, with Heatmap and Trends one tap away", async () => {
+    be.seedIncident({ reporter: wid(), title: "Resolved one", status: "RESOLVED" });
+    const view = await phone();
+    await view.findByTestId("incidents-screen");
+    await press(view, "tab-analytics");
+    await pathIs(view, "/analytics");
+    expect(await view.findByTestId("kpi-tiles")).toBeTruthy();
+    for (const tab of ["Overview", "Heatmap", "Trends"]) {
+      expect(await view.findByLabelText(tab)).toBeTruthy();
+    }
+    await fireEvent.press(await view.findByLabelText("Heatmap"));
+    await waitFor(() => expect(view.getSearchParams()).toMatchObject({ view: "heatmap" }));
+    expect(view.getPathname()).toBe("/analytics"); // same screen, not a new page
+    await fireEvent.press(await view.findByLabelText("Trends"));
+    await waitFor(() => expect(view.getSearchParams()).toMatchObject({ view: "trends" }));
+    expect(await view.findByTestId("trends-screen")).toBeTruthy();
+  });
+
+  it("Report is a button at the top right of the page header and opens the report page", async () => {
+    const view = await phone();
+    await view.findByTestId("incidents-screen");
+    await press(view, "report-header-button");
+    await pathIs(view, "/report");
+    expect(await view.findByTestId("report-screen")).toBeTruthy();
+    // No button on the page it opens.
+    expect(view.queryByTestId("report-header-button")).toBeNull();
+  });
+
+  it("there is no floating Report button any more", async () => {
+    const view = await phone();
+    await view.findByTestId("incidents-screen");
+    expect(view.queryByTestId("report-fab-float")).toBeNull();
+    expect(view.queryByTestId("report-fab")).toBeNull();
+  });
+
+  it("Report uses a camera icon, not a plus", async () => {
+    const view = await phone();
+    await view.findByTestId("report-header-button");
+    const drawn = iconPaths(view, "report-header-button");
+    expect(drawn.some((d) => d.startsWith(CAMERA_PATH))).toBe(true);
+    expect(drawn).not.toContain(PLUS_PATH);
+  });
+
+  it.each([
+    ["/incidents?tab=closure", "incidents-screen"],
+    ["/actions", "actions-screen"],
+    ["/analytics", "analytics-screen"],
+    ["/alerts", "alerts-screen"],
+    ["/account", "account-screen"],
+    ["/team", "team-screen"],
+    ["/admin/blueprints", "blueprints-screen"],
+    ["/admin/blueprints/new", "new-blueprint-screen"],
+  ])("every manager page has the Report button: %s", async (url, screen) => {
+    const view = await launch(be, { as: M, url, phone: true });
+    await view.findByTestId(screen);
+    expect(await view.findByTestId("report-header-button")).toBeTruthy();
+    expect(view.getAllByTestId("report-header-button")).toHaveLength(1);
+  });
+
+  it("detail pages have it too (a report, an action)", async () => {
+    const rec = be.seedIncident({ reporter: wid(), title: "Hot machine" });
+    const view = await launch(be, { as: M, url: `/incidents/${rec.id}`, phone: true });
+    await view.findByTestId("incident-detail");
+    expect(await view.findByTestId("report-header-button")).toBeTruthy();
+  });
+
+  it("the button sits on the title's own line, level with the heading", async () => {
+    const view = await phone("/alerts");
+    const actions = await view.findByTestId("header-actions");
+    const titleRow = actions.parent!;
+    // The same row holds the page title, so the button is aligned with the heading, not above it.
+    expect(within(titleRow).getByRole("header")).toBeTruthy();
+    expect(within(titleRow).getByTestId("report-header-button")).toBeTruthy();
+  });
+
+  it("it shares the row with a page's own actions, which stay to its left", async () => {
+    be.seedIncident({ reporter: wid(), title: "Needs attention" });
+    const view = await phone("/alerts");
+    await view.findByTestId("mark-all-read");
+    const actions = await view.findByTestId("header-actions");
+    expect(within(actions).getByTestId("mark-all-read")).toBeTruthy();
+    expect(within(actions).getByTestId("report-header-button")).toBeTruthy();
+  });
+
+  it("the wide layout has the button on every page too", async () => {
+    const view = await launch(be, { as: M, url: "/incidents" });
+    await view.findByTestId("incidents-screen");
+    expect(await view.findByTestId("report-header-button")).toBeTruthy();
+    await cleanup();
+    const analytics = await launch(be, { as: M, url: "/analytics" });
+    await analytics.findByTestId("analytics-screen");
+    expect(await analytics.findByTestId("report-header-button")).toBeTruthy();
+  });
+
+  it("workers and supervisors keep Report in the middle and get no header button", async () => {
+    const sup = await launch(be, { as: "supervisor@plantx.demo", url: "/incidents", phone: true });
+    await sup.findByTestId("incidents-screen");
+    expect(sup.queryByTestId("report-header-button")).toBeNull();
+    expect(await sup.findByTestId("report-fab")).toBeTruthy();
+    await cleanup();
+    const worker = await launch(be, { as: "worker@plantx.demo", url: "/incidents", phone: true });
+    await worker.findByTestId("incidents-screen");
+    expect(worker.queryByTestId("report-header-button")).toBeNull();
+    expect(await worker.findByTestId("report-fab")).toBeTruthy();
+  });
+});
+
+describe("Journey: switching Analytics tabs only reloads the content", () => {
+  it("the header, tab strip and filters stay mounted; only the content below changes", async () => {
+    be.seedIncident({ reporter: wid(), title: "Pinned" });
+    const view = await launch(be, { as: M, url: "/analytics" });
+    await view.findByTestId("kpi-tiles");
+    // Grab the elements that must survive a tab switch. A remount would create new ones.
+    const strip = view.getByTestId("tab-heatmap");
+    const filters = view.getByTestId("analytics-filters");
+    const screen = view.getByTestId("analytics-screen");
+
+    await fireEvent.press(strip);
+    await view.findByTestId("area-table");
+    expect(view.getByTestId("tab-heatmap")).toBe(strip);
+    expect(view.getByTestId("analytics-filters")).toBe(filters);
+    expect(view.getByTestId("analytics-screen")).toBe(screen);
+    expect(view.queryByTestId("kpi-tiles")).toBeNull(); // the overview content is gone
+
+    await fireEvent.press(view.getByTestId("tab-trends"));
+    await view.findByTestId("by-week");
+    expect(view.getByTestId("tab-heatmap")).toBe(strip);
+    expect(view.getByTestId("analytics-filters")).toBe(filters);
+    expect(view.queryByTestId("area-table")).toBeNull();
+
+    await fireEvent.press(view.getByTestId("tab-overview"));
+    await view.findByTestId("kpi-tiles");
+    expect(view.getByTestId("tab-heatmap")).toBe(strip);
+  });
+
+  it("only the chosen view fetches: the heatmap tab does not refetch the overview", async () => {
+    be.seedIncident({ reporter: wid(), title: "Pinned" });
+    const view = await launch(be, { as: M, url: "/analytics" });
+    await view.findByTestId("kpi-tiles");
+    const summaries = be.called("GET", "/analytics/summary").length;
+    expect(be.called("GET", "/analytics/heatmap")).toHaveLength(0); // not asked for yet
+    await fireEvent.press(await view.findByTestId("tab-heatmap"));
+    await view.findByTestId("area-table");
+    expect(be.called("GET", "/analytics/heatmap").length).toBeGreaterThan(0);
+    expect(be.called("GET", "/analytics/summary")).toHaveLength(summaries); // overview untouched
+    // Coming back reuses the cached overview instead of loading it again.
+    await fireEvent.press(await view.findByTestId("tab-overview"));
+    await view.findByTestId("kpi-tiles");
+    expect(be.called("GET", "/analytics/summary")).toHaveLength(summaries);
+  });
+
+  it("filters carry over between tabs", async () => {
+    be.seedIncident({ reporter: wid(), title: "Pinned" });
+    const view = await launch(be, { as: M, url: "/analytics?severity=HIGH" });
+    await view.findByTestId("kpi-tiles");
+    await fireEvent.press(await view.findByTestId("tab-trends"));
+    await view.findByTestId("by-week");
+    expect(
+      be.called("GET", "/analytics/trends").every((c) => c.query.get("severity") === "HIGH"),
+    ).toBe(true);
+  });
+
+  it("old deep links still work: /analytics/heatmap lands on the Heatmap view", async () => {
+    const view = await launch(be, { as: M, url: "/analytics/heatmap?shift=C" });
+    await view.findByTestId("area-table");
+    expect(view.getPathname()).toBe("/analytics");
+    expect(view.getSearchParams()).toMatchObject({ view: "heatmap", shift: "C" });
+    expect(be.called("GET", "/analytics/heatmap")[0]?.query.get("shift")).toBe("C");
+  });
+
+  it("an unknown view falls back to Overview", async () => {
+    be.seedIncident({ reporter: wid(), title: "Pinned" });
+    const view = await launch(be, { as: M, url: "/analytics?view=bogus" });
+    expect(await view.findByTestId("kpi-tiles")).toBeTruthy();
   });
 });
 

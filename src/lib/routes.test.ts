@@ -17,6 +17,7 @@ describe("RBAC matrix (guide §3)", () => {
     report: ROLES,
     incidents: ROLES,
     actions: ROLES,
+    alerts: ROLES,
     account: ROLES,
     analytics: ["SUPERVISOR", "MANAGER"],
     team: ["SUPERVISOR", "MANAGER"],
@@ -35,14 +36,16 @@ describe("RBAC matrix (guide §3)", () => {
   it("lists only routes the role can open, in the documented order", () => {
     expect(navFor("WORKER").map((n) => n.navLabel)).toEqual([
       "My reports",
-      "Report a hazard",
       "Actions",
+      "Report a hazard",
+      "Alerts",
       "Account",
     ]);
     expect(navFor("SUPERVISOR").map((n) => n.key)).toEqual([
       "incidents",
-      "report",
       "actions",
+      "report",
+      "alerts",
       "analytics",
       "team",
       "account",
@@ -52,6 +55,7 @@ describe("RBAC matrix (guide §3)", () => {
       "incidents",
       "actions",
       "report",
+      "alerts",
       "team",
       "blueprints",
       "account",
@@ -59,13 +63,31 @@ describe("RBAC matrix (guide §3)", () => {
     for (const role of ROLES)
       for (const item of navFor(role)) expect(canAccess(role, item.key)).toBe(true);
   });
-  it("hides web-only sections on phones", () => {
+  it("on a phone every role gets exactly five tabs with the primary action in the middle", () => {
+    for (const role of ["WORKER", "SUPERVISOR"] as const) {
+      expect(navFor(role, { compact: true }).map((n) => n.key)).toEqual([
+        "incidents",
+        "actions",
+        "report",
+        "alerts",
+        "account",
+      ]);
+    }
+    // Managers: Analytics in the middle; Report moves to a floating button, outside the bar.
     expect(navFor("MANAGER", { compact: true }).map((n) => n.key)).toEqual([
       "incidents",
       "actions",
-      "report",
+      "analytics",
+      "alerts",
       "account",
     ]);
+    // Report stays reachable for managers: only the tab changed, not their access.
+    expect(canAccess("MANAGER", "report")).toBe(true);
+  });
+
+  it("the wide layout is unchanged for managers: Analytics and Report both in the sidebar", () => {
+    const keys = navFor("MANAGER").map((n) => n.key);
+    expect(keys).toEqual(expect.arrayContaining(["analytics", "report"]));
   });
   it("sends each role home", () => {
     expect(homeFor("WORKER")).toBe("/incidents");

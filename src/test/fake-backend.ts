@@ -862,6 +862,18 @@ export function createFakeBackend() {
     if (path.startsWith("/v1/analytics/")) {
       if (!staff) return forbid();
       const all = [...incidents.values()];
+      if (path.endsWith("/trends")) {
+        return json(200, {
+          range: { from: query.get("from") ?? "", to: query.get("to") ?? "" },
+          bucket: "week",
+          points: all.map((r) => ({
+            period: "2026-11-09T00:00:00Z",
+            category: r.category ?? "Uncategorised",
+            severity: r.severity,
+            count: 1,
+          })),
+        });
+      }
       if (path.endsWith("/summary"))
         return json(200, {
           range: { from: query.get("from") ?? "", to: query.get("to") ?? "" },

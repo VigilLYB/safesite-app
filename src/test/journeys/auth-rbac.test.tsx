@@ -22,6 +22,7 @@ const navLabels = async (view: View) => {
     "Incidents",
     "Report a hazard",
     "Actions",
+    "Alerts",
     "Analytics",
     "Team",
     "Blueprints",
@@ -76,10 +77,16 @@ describe("Journey: sign in lands each role on its home", () => {
 });
 
 describe("Journey: navigation is role-shaped (RBAC)", () => {
-  it("worker: My reports, Report, Actions, Account only", async () => {
+  it("worker: My reports, Report, Actions, Alerts, Account only", async () => {
     const view = await launch(be, { as: "worker@plantx.demo", url: "/incidents" });
     await view.findByTestId("incidents-screen");
-    expect(await navLabels(view)).toEqual(["My reports", "Report a hazard", "Actions", "Account"]);
+    expect(await navLabels(view)).toEqual([
+      "My reports",
+      "Report a hazard",
+      "Actions",
+      "Alerts",
+      "Account",
+    ]);
   });
   it("supervisor: adds Analytics and Team, no Blueprints", async () => {
     const view = await launch(be, { as: "supervisor@plantx.demo", url: "/incidents" });
@@ -88,6 +95,7 @@ describe("Journey: navigation is role-shaped (RBAC)", () => {
       "Incidents",
       "Report a hazard",
       "Actions",
+      "Alerts",
       "Analytics",
       "Team",
       "Account",
@@ -100,6 +108,7 @@ describe("Journey: navigation is role-shaped (RBAC)", () => {
       "Incidents",
       "Report a hazard",
       "Actions",
+      "Alerts",
       "Analytics",
       "Team",
       "Blueprints",

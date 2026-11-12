@@ -12,3 +12,4 @@ export { Section } from "./layout/Section";
 export { Row, Stack } from "./layout/Stack";
 export { Text } from "./Text";
 export type { TextProps, TextTone } from "./Text";
+export { HeaderExtraProvider, useHeaderExtra } from "./layout/HeaderExtra";
