@@ -39,7 +39,7 @@ export function DuplicatesTab({ parentId, mode, currentId }: DuplicatesTabProps)
           {row.reporter.fullName} · {formatRelative(row.createdAt)}
         </Text>
         <Row gap={2} wrap>
-          <SeverityBadge severity={row.severity} showPips={false} />
+          <SeverityBadge severity={row.severity} size="sm" />
           <StatusPill status={row.status} />
         </Row>
       </>

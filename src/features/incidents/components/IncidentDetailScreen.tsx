@@ -9,8 +9,10 @@ import {
   Banner,
   DetailSkeleton,
   ErrorState,
+  MutationError,
   NoteDialog,
   RecordNotFound,
+  TimelineSkeleton,
 } from "@/components/feedback";
 import { Screen, ScreenHeader, Stack, TabStrip, type TabOption } from "@/components/ui";
 import { AssignActionWizard } from "@/features/actions";
@@ -39,6 +41,7 @@ const WORKFLOW_COPY: Record<
   TransitionEvent,
   { title: string; description: string; confirm: string }
 > = {
+  // Not offered in the app (Approve is the one review step); kept so the map stays complete.
   validate: {
     title: "Validate report",
     description: "Mark this report as checked.",
@@ -46,7 +49,8 @@ const WORKFLOW_COPY: Record<
   },
   approve: {
     title: "Approve report",
-    description: "Approve this report. It will then need a corrective action.",
+    description:
+      "Confirm this is a real hazard. A corrective action can be assigned whenever one is needed.",
     confirm: "Approve",
   },
   reject: {
@@ -56,7 +60,7 @@ const WORKFLOW_COPY: Record<
   },
   reopen: {
     title: "Reopen report",
-    description: "Return this report to Open. A new action needs Validate or Approve first.",
+    description: "Return this report to Open. It needs approving again before a new action.",
     confirm: "Reopen",
   },
   close: { title: "Close report", description: "Close this resolved report.", confirm: "Close" },
@@ -93,7 +97,12 @@ export function IncidentDetailScreen() {
       refreshing={query.isRefetching}
       testID="incident-detail"
     >
-      <ScreenHeader title="Report" onBack={back} />
+      <ScreenHeader
+        title={incident ? displayTitle(incident) : "Report"}
+        titleTestID={incident ? "incident-title" : undefined}
+        onBack={back}
+        trail={[{ label: isStaff(user?.role) ? "Incidents" : "My reports", onPress: back }]}
+      />
       {!valid ? <RecordNotFound what="report" /> : null}
       {valid && query.isPending ? <DetailSkeleton lines={5} /> : null}
       {valid && query.isError && !incident ? (
@@ -162,6 +171,7 @@ function Loaded({
         onRetryTranscription={() => void changes.retryTranscription()}
         retrying={changes.retryingTranscription}
       />
+      <MutationError error={changes.transcriptionError} />
       {changes.assignedActionId ? (
         <Banner
           icon="check"
@@ -171,6 +181,7 @@ function Loaded({
           testID="assigned-banner"
         />
       ) : null}
+      {timeline.isPending ? <TimelineSkeleton /> : null}
       {timeline.data ? (
         <TimelineBar
           nodes={timeline.data.nodes}
@@ -184,11 +195,6 @@ function Loaded({
         incident={incident}
         busy={changes.busy}
         onOpen={setDialog}
-        onRunPpe={() => {
-          setTab("ppe");
-          ppe.mutate(incident.id);
-        }}
-        ppePending={ppe.isPending}
         onRefresh={refreshAll}
         refreshing={refreshing}
       />

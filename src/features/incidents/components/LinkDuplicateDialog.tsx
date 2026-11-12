@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { incidentsApi, isApiError, type Incident } from "@/lib/api";
 import { displayTitle, shortId } from "@/lib/format";
 import { BottomSheet, Button, Card, Stack, Text, TextField } from "@/components/ui";
-import { InlineNotice, MutationError } from "@/components/feedback";
+import { InlineNotice, ListSkeleton, MutationError } from "@/components/feedback";
 import { SeverityBadge } from "@/components/domain";
 import type { Outcome } from "../hooks/useIncidentChanges";
 
@@ -59,7 +59,7 @@ function LinkForm({
     >
       <Stack gap={4}>
         <Text tone="muted">Choose the report this one duplicates.</Text>
-        {picker.isPending ? <Text variant="caption">Loading reports…</Text> : null}
+        {picker.isPending ? <ListSkeleton rows={3} /> : null}
         {picker.isError ? <InlineNotice message="Couldn't load reports. Try again." /> : null}
         {candidates.map((item) => (
           <Card
@@ -73,7 +73,7 @@ function LinkForm({
               {shortId(item.id)}
             </Text>
             <Text variant="label">{displayTitle(item)}</Text>
-            <SeverityBadge severity={item.severity} showPips={false} />
+            <SeverityBadge severity={item.severity} size="sm" />
           </Card>
         ))}
         {!picker.isPending && candidates.length === 0 ? (

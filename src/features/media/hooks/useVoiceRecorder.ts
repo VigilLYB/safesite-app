@@ -9,19 +9,25 @@ import {
   useAudioRecorderState,
   type RecordingOptions,
 } from "expo-audio";
+import { M4A_CONTENT_TYPE, SERVER_ACCEPTS_M4A } from "@/lib/audio-support";
 import { MAX_RECORDING_MS, type VoiceRecorder } from "./voice-types";
 
 /**
- * 16 kHz mono 16-bit PCM WAV (backend README, "Recording voice notes"). expo-audio can write
- * linear-PCM WAV on iOS. Android's MediaRecorder offers no WAV or OGG/Opus through expo-audio,
- * so voice notes are switched off there rather than uploading m4a the server rejects.
+ * iOS: 16 kHz mono 16-bit PCM WAV (backend README, "Recording voice notes").
+ * Android: expo-audio offers no WAV or OGG/Opus there, so it records 16 kHz mono AAC in .m4a.
+ * That only turns on once the server accepts m4a (see lib/audio-support.ts).
  */
-const WAV_OPTIONS: RecordingOptions = {
+const RECORDING_OPTIONS: RecordingOptions = {
   extension: ".wav",
   sampleRate: 16_000,
   numberOfChannels: 1,
   bitRate: 256_000,
-  android: { extension: ".wav", outputFormat: "default", audioEncoder: "default" },
+  android: {
+    extension: ".m4a",
+    outputFormat: "mpeg4",
+    audioEncoder: "aac",
+    sampleRate: 16_000,
+  },
   ios: {
     extension: ".wav",
     outputFormat: IOSOutputFormat.LINEARPCM,
@@ -35,12 +41,12 @@ const WAV_OPTIONS: RecordingOptions = {
 };
 
 export function useVoiceRecorder(): VoiceRecorder {
-  const recorder = useAudioRecorder(WAV_OPTIONS);
+  const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const state = useAudioRecorderState(recorder);
   const [uri, setUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const supported = Platform.OS === "ios";
+  const supported = Platform.OS === "ios" || (Platform.OS === "android" && SERVER_ACCEPTS_M4A);
 
   const stop = useCallback(async () => {
     if (timer.current) clearTimeout(timer.current);
@@ -83,7 +89,7 @@ export function useVoiceRecorder(): VoiceRecorder {
   return {
     supported,
     uri,
-    contentType: "audio/wav",
+    contentType: Platform.OS === "android" ? M4A_CONTENT_TYPE : "audio/wav",
     isRecording: state.isRecording,
     durationMs: state.durationMillis,
     error,

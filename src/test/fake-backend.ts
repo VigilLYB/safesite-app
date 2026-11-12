@@ -56,6 +56,12 @@ export interface IncidentRec {
   createdAt: string;
   nodes: Node[];
   submissionId?: string;
+  /** Speech-to-text state; derived from audioKey when not set (FAILED needs an explicit seed). */
+  processing?: { transcription: string; error: string | null };
+  /** What a retry of a FAILED transcription returns: a transcript, or null to fail again. */
+  retryTranscript?: string | null;
+  /** The reason a failing retry reports (defaults to the original error). */
+  retryError?: string;
 }
 interface ActionRec {
   id: string;
@@ -304,7 +310,10 @@ export function createFakeBackend() {
         isDuplicate: rec.clusterParentId !== null,
       },
       duplicateCount: dupCount(rec.id),
-      processing: { transcription: rec.audioKey ? "COMPLETED" : "NOT_REQUIRED", error: null },
+      processing: rec.processing ?? {
+        transcription: rec.audioKey ? "COMPLETED" : "NOT_REQUIRED",
+        error: null,
+      },
       lastChange: { nodeType: n.nodeType, label: n.label, actorRole: n.actorRole, at: n.createdAt },
       permissions: {
         transitions: transitions(rec, a),
@@ -651,6 +660,23 @@ export function createFakeBackend() {
           createdAt: now(),
         });
       }
+      if (method === "POST" && sub === "/transcription") {
+        // Mirrors incidents-service.retryTranscription.
+        if (!rec.audioKey) return err(422, "UNPROCESSABLE", "This report has no voice note");
+        const state = rec.processing?.transcription ?? "COMPLETED";
+        if (state !== "FAILED")
+          return err(422, "UNPROCESSABLE", `Transcription is ${state}; nothing to retry`);
+        if (rec.retryTranscript === null || rec.retryTranscript === undefined) {
+          // Like the server: the new failure reason is stored on the report and returned.
+          const reason = rec.retryError ?? rec.processing?.error ?? "Speech-to-text failed";
+          rec.processing = { transcription: "FAILED", error: reason };
+          return err(422, "UNPROCESSABLE", reason);
+        }
+        rec.transcript = rec.retryTranscript;
+        rec.processing = { transcription: "COMPLETED", error: null };
+        addNode(rec, "TRANSCRIBED", "AI Transcribed Audio", null, ["transcript"]);
+        return json(200, dto(rec, actor));
+      }
       if (method === "GET" && sub === "/actions") return json(200, { items: [] });
       const mutating = ["PATCH", "PUT", "POST", "DELETE"].includes(method);
       if (mutating && expected !== undefined && expected !== rec.version) return stale(rec);
@@ -848,9 +874,9 @@ export function createFakeBackend() {
           byStatus: [...new Set(all.map((r) => r.status))].map((k) => ({
             key: k,
             count: all.filter((r) => r.status === k).length,
-            score: 0,
           })),
-          bySeverity: [{ key: "MEDIUM", count: all.length, score: all.length * 2 }],
+          // Like the real API: status and severity buckets have no `score`.
+          bySeverity: [{ key: "MEDIUM", count: all.length }],
           byShift: [{ key: "A", name: "Morning", count: all.length, score: all.length }],
           topAreas: [{ key: "Pump Room", count: all.length, score: all.length * 2 }],
           actions: {

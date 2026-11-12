@@ -1,8 +1,9 @@
 export interface VoiceRecorder {
-  /** false when this device cannot produce a WAV the server accepts (guide §5.3). */
+  /** false when this device cannot record a format the server accepts (guide §5.3). */
   supported: boolean;
   uri: string | null;
-  contentType: "audio/wav";
+  /** WAV on iOS and web; m4a (AAC) on Android once the server accepts it. */
+  contentType: "audio/wav" | "audio/mp4";
   isRecording: boolean;
   durationMs: number;
   error: string | null;

@@ -1,17 +1,7 @@
 import { StyleSheet } from "react-native";
-import Svg, {
-  Circle,
-  Defs,
-  G,
-  Line,
-  Pattern,
-  Polygon,
-  Polyline,
-  Rect,
-  Text as SvgText,
-} from "react-native-svg";
+import Svg, { Circle, G, Polygon, Polyline, Rect, Text as SvgText } from "react-native-svg";
 import { polygonCentroid, type Point } from "@/lib/geometry";
-import { heatRamp, palette } from "@/lib/theme";
+import { fonts, heatRamp, palette } from "@/lib/theme";
 import { BlueprintCanvas, type CanvasBlueprint } from "./BlueprintCanvas";
 
 export interface MapArea {
@@ -52,13 +42,54 @@ export interface BlueprintMapProps {
   /** pick / drag / draw: a tap reports a clamped point. */
   onPick?: ((point: { x: number; y: number }) => void) | undefined;
   onImageError?: (() => void) | undefined;
+  /**
+   * Draw area names on the map. Default: only when the plan has no image (a drawn floor plan
+   * already carries its own room names) or the area is highlighted.
+   */
+  showAreaLabels?: boolean | undefined;
 }
 
-const HATCH_FROM_BIN = 4;
+/** Ramp bins from this one up are dark enough to need light count text. */
+const LIGHT_TEXT_FROM_BIN = 3;
 const binFor = (intensity: number): number =>
   Math.min(heatRamp.length - 1, Math.floor(Math.min(Math.max(intensity, 0), 1) * heatRamp.length));
 
 const toPoints = (polygon: readonly Point[]) => polygon.map(([x, y]) => `${x},${y}`).join(" ");
+
+/**
+ * A name on a solid pill: dark text on white with a hairline edge, readable over any plan or heat
+ * colour (a stroked "halo" renders as white blur on Android).
+ */
+function AreaLabel({ x, y, name, size }: { x: number; y: number; name: string; size: number }) {
+  const padX = size * 0.5;
+  const width = name.length * size * 0.56 + padX * 2;
+  const height = size * 1.6;
+  return (
+    <G>
+      <Rect
+        x={x - width / 2}
+        y={y - height / 2}
+        width={width}
+        height={height}
+        rx={height / 4}
+        fill={palette.surface}
+        fillOpacity={0.94}
+        stroke={palette.grey300}
+        strokeWidth={size / 12}
+      />
+      <SvgText
+        x={x}
+        y={y + size * 0.36}
+        fontSize={size}
+        fontFamily={fonts.semibold}
+        textAnchor="middle"
+        fill={palette.ink}
+      >
+        {name}
+      </SvgText>
+    </G>
+  );
+}
 
 /**
  * One map for every mode (guide §6): view, pick/drag a pin, draw an area, or show heat cells.
@@ -74,10 +105,12 @@ export function BlueprintMap({
   cellSize = 50,
   onPick,
   onImageError,
+  showAreaLabels,
 }: BlueprintMapProps) {
-  const stroke = Math.max(2, blueprint.widthPx / 400);
-  const fontSize = Math.max(12, blueprint.widthPx / 45);
-  const radius = Math.max(9, blueprint.widthPx / 60);
+  const stroke = Math.max(2, blueprint.widthPx / 500);
+  const fontSize = Math.max(12, blueprint.widthPx / 70);
+  const radius = Math.max(9, blueprint.widthPx / 70);
+  const labelAreas = showAreaLabels ?? !blueprint.imageUrl;
 
   return (
     <BlueprintCanvas
@@ -94,25 +127,6 @@ export function BlueprintMap({
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         >
-          <Defs>
-            <Pattern
-              id="hatch"
-              patternUnits="userSpaceOnUse"
-              width={14}
-              height={14}
-              patternTransform="rotate(45)"
-            >
-              <Line
-                x1={0}
-                y1={0}
-                x2={0}
-                y2={14}
-                stroke={palette.surface}
-                strokeWidth={3}
-                strokeOpacity={0.35}
-              />
-            </Pattern>
-          </Defs>
           {cells?.map((cell) => {
             const bin = binFor(cell.intensity);
             return (
@@ -122,25 +136,17 @@ export function BlueprintMap({
                   y={cell.y}
                   width={cellSize}
                   height={cellSize}
+                  rx={cellSize * 0.08}
                   fill={heatRamp[bin] ?? heatRamp[0]}
-                  fillOpacity={0.92}
+                  fillOpacity={0.85}
                 />
-                {bin >= HATCH_FROM_BIN ? (
-                  <Rect
-                    x={cell.x}
-                    y={cell.y}
-                    width={cellSize}
-                    height={cellSize}
-                    fill="url(#hatch)"
-                  />
-                ) : null}
                 <SvgText
                   x={cell.centerX}
-                  y={cell.centerY + cellSize * 0.14}
-                  fontSize={cellSize * 0.42}
-                  fontWeight="700"
+                  y={cell.centerY + cellSize * 0.13}
+                  fontSize={cellSize * 0.36}
+                  fontFamily={fonts.semibold}
                   textAnchor="middle"
-                  fill={bin < 3 ? palette.ink : palette.surface}
+                  fill={bin < LIGHT_TEXT_FROM_BIN ? palette.ink : palette.surface}
                 >
                   {cell.count}
                 </SvgText>
@@ -154,23 +160,14 @@ export function BlueprintMap({
                 <Polygon
                   points={toPoints(area.polygon)}
                   fill={area.highlighted ? palette.ink : "none"}
-                  fillOpacity={area.highlighted ? 0.18 : 0}
-                  stroke={palette.ink}
+                  fillOpacity={area.highlighted ? 0.12 : 0}
+                  stroke={area.highlighted ? palette.ink : palette.grey500}
                   strokeWidth={area.highlighted ? stroke * 2 : stroke}
-                  {...(area.highlighted ? {} : { strokeDasharray: `${stroke * 4},${stroke * 2}` })}
+                  {...(area.highlighted ? {} : { strokeDasharray: `${stroke * 4},${stroke * 3}` })}
                 />
-                <SvgText
-                  x={cx}
-                  y={cy}
-                  fontSize={fontSize}
-                  fontWeight="700"
-                  textAnchor="middle"
-                  fill={palette.ink}
-                  stroke={palette.surface}
-                  strokeWidth={fontSize / 5}
-                >
-                  {area.name}
-                </SvgText>
+                {labelAreas || area.highlighted ? (
+                  <AreaLabel x={cx} y={cy} name={area.name} size={fontSize} />
+                ) : null}
               </G>
             );
           })}

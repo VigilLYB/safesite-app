@@ -1,6 +1,6 @@
 import type { SelectOption } from "@/components/ui";
 
-/** Suggestions only: the API accepts any category up to 60 characters. */
+/** The dropdown's choices. "Other" opens a text box: the API accepts any category up to 60 chars. */
 export const CATEGORIES = [
   "Chemical leak",
   "Fire risk",
@@ -16,3 +16,9 @@ export const CATEGORY_OPTIONS: readonly SelectOption<string>[] = CATEGORIES.map(
   value,
   label: value,
 }));
+
+export const OTHER_CATEGORY = "Other";
+
+/** True for a category picked from the list (anything else came from the "Other" text box). */
+export const isListedCategory = (value: string): boolean =>
+  value !== OTHER_CATEGORY && (CATEGORIES as readonly string[]).includes(value);

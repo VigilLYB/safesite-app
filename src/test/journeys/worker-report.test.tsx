@@ -10,6 +10,16 @@ afterEach(cleanup);
 const open = (as = "worker@plantx.demo") => launch(be, { as, url: "/report" });
 const fill = async (view: View, id: string, text: string) =>
   fireEvent.changeText(await view.findByTestId(id), text);
+/** Category is a dropdown: open it and choose an option by its label. */
+const pickCategory = async (view: View, label: string) => {
+  await press(view, "report-category");
+  await fireEvent.press(await view.findByText(label));
+};
+const submittedBody = () =>
+  be.called("POST", "/v1/incidents").find((c) => c.path === "/v1/incidents")?.body as Record<
+    string,
+    unknown
+  >;
 
 describe("Journey: worker reports a hazard", () => {
   it("photo + severity + title + GPS: the exact body, the result, then the report", async () => {
@@ -17,7 +27,7 @@ describe("Journey: worker reports a hazard", () => {
     await press(view, "take-photo");
     await press(view, "severity-HIGH");
     await fill(view, "report-title", "  Steam leak at P-301  ");
-    await fill(view, "report-category", "Chemical leak");
+    await pickCategory(view, "Chemical leak");
     await view.findByText("Location captured (±25 m)");
     await press(view, "report-submit");
 
@@ -134,5 +144,24 @@ describe("Journey: worker reports a hazard", () => {
     const body = be.called("POST", "/v1/incidents").find((c) => c.path === "/v1/incidents")
       ?.body as { severity: string };
     expect(body.severity).toBe("MEDIUM");
+  });
+
+  it("category 'Other' opens a text box and sends what was typed, not the word Other", async () => {
+    const view = await open();
+    await fill(view, "report-title", "Odd smell");
+    await pickCategory(view, "Other");
+    await fill(view, "report-category-custom", "  Gas odour  ");
+    await press(view, "report-submit");
+    await view.findByTestId("report-result");
+    expect(submittedBody().category).toBe("Gas odour");
+  });
+
+  it("choosing 'Other' and typing nothing sends no category", async () => {
+    const view = await open();
+    await fill(view, "report-title", "No category");
+    await pickCategory(view, "Other");
+    await press(view, "report-submit");
+    await view.findByTestId("report-result");
+    expect(submittedBody()).not.toHaveProperty("category");
   });
 });

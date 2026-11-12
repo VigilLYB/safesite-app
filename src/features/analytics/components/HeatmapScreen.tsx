@@ -15,7 +15,7 @@ import {
   Text,
   TextField,
 } from "@/components/ui";
-import { EmptyState, ErrorState, ListSkeleton } from "@/components/feedback";
+import { EmptyState, ErrorState, MapSkeleton } from "@/components/feedback";
 import { BlueprintMap, useBlueprint, useBlueprints } from "@/features/blueprints";
 import { useHeatmap } from "../hooks/useAnalytics";
 import {
@@ -110,9 +110,7 @@ export function HeatmapScreen() {
       {list.data && list.data.length === 0 ? (
         <EmptyState icon="map" title="No blueprints yet" />
       ) : null}
-      {(plan.isPending && blueprintId) || (heat.isPending && blueprintId) ? (
-        <ListSkeleton rows={3} />
-      ) : null}
+      {(plan.isPending && blueprintId) || (heat.isPending && blueprintId) ? <MapSkeleton /> : null}
       {plan.isError ? <ErrorState error={plan.error} onRetry={() => void plan.refetch()} /> : null}
       {heat.isError && !heat.data ? (
         <ErrorState error={heat.error} onRetry={() => void heat.refetch()} />

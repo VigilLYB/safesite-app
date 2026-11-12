@@ -2,6 +2,11 @@
 process.env.EXPO_PUBLIC_API_BASE_URL ||= "https://api.test.invalid";
 process.env.EXPO_PUBLIC_APP_TIME_ZONE = "Asia/Kolkata";
 
+// Reanimated / Gesture Handler have no native side under Jest. Reanimated itself is mapped to
+// src/test/reanimated-mock.js in the Jest config (so expo-router's test mocks resolve to it too).
+jest.mock("react-native-worklets", () => require("react-native-worklets/lib/module/mock"));
+require("react-native-gesture-handler/jestSetup");
+
 jest.mock(
   "react-native-safe-area-context",
   () => jest.requireActual("react-native-safe-area-context/jest/mock").default,

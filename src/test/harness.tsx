@@ -29,7 +29,12 @@ export async function launch(
       JSON.stringify({ accessToken: `tok-${user.id}`, expiresAt: "2099-01-01T00:00:00Z", user }),
     );
   }
-  return renderRouter("./src/app", { initialUrl: options.url ?? "/" });
+  const view = await renderRouter("./src/app", { initialUrl: options.url ?? "/" });
+  // renderRouter switches Jest to fake timers. The in-memory backend resolves on microtasks, but
+  // real HTTP needs the event loop: under fake timers waitFor/findBy only advance fake time, so live
+  // responses never arrive. Live suites (no backend) therefore run on real timers.
+  if (!backend) jest.useRealTimers();
+  return view;
 }
 
 /** Reset every module-level singleton so journeys never leak into each other. */

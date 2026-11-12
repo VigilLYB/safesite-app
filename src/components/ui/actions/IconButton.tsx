@@ -18,7 +18,7 @@ export function IconButton({
   icon,
   label,
   onPress,
-  size = 24,
+  size = 20,
   disabled = false,
   testID,
 }: IconButtonProps) {
@@ -36,7 +36,7 @@ export function IconButton({
       style={({ pressed }) => [
         styles.base,
         {
-          backgroundColor: pressed ? palette.grey300 : palette.grey100,
+          backgroundColor: pressed ? palette.grey100 : "transparent",
           opacity: disabled ? 0.5 : 1,
         },
         ringStyle as ViewStyle,

@@ -6,7 +6,7 @@ import { palette, radii, space } from "@/lib/theme";
 export interface CardProps {
   children: ReactNode;
   tone?: "surface" | "subtle" | "inverse" | undefined;
-  /** A 6pt left edge in a status colour. The edge is meaning, not decoration. */
+  /** A thin 3pt left edge in a severity colour. The edge is meaning, not decoration. */
   edgeColor?: string | undefined;
   padded?: boolean | undefined;
   onPress?: () => void;
@@ -15,9 +15,9 @@ export interface CardProps {
   testID?: string | undefined;
 }
 
-const TONE = { surface: palette.surface, subtle: palette.grey100, inverse: palette.ink } as const;
+const TONE = { surface: palette.surface, subtle: palette.grey50, inverse: palette.ink } as const;
 
-/** Flat tonal container: no border, no shadow. Tappable when onPress is given. */
+/** Flat container: a tone plus a hairline border, never a shadow. Tappable when onPress is given. */
 export function Card({
   children,
   tone = "surface",
@@ -32,8 +32,10 @@ export function Card({
   const base: ViewStyle[] = [
     styles.card,
     { backgroundColor: selected ? palette.grey100 : TONE[tone] },
+    tone !== "inverse" ? styles.bordered : {},
+    selected ? { borderColor: palette.grey400 } : {},
     padded ? styles.padded : {},
-    edgeColor ? { borderLeftWidth: 6, borderLeftColor: edgeColor } : {},
+    edgeColor ? { borderLeftWidth: 3, borderLeftColor: edgeColor } : {},
   ];
 
   if (!onPress) {
@@ -53,7 +55,7 @@ export function Card({
       {...handlers}
       style={({ pressed }) => [
         ...base,
-        pressed && { backgroundColor: palette.grey100 },
+        pressed && { backgroundColor: palette.grey50 },
         ringStyle as ViewStyle,
       ]}
     >
@@ -64,5 +66,6 @@ export function Card({
 
 const styles = StyleSheet.create({
   card: { borderRadius: radii.card, overflow: "hidden" },
-  padded: { padding: space[4], gap: space[2] },
+  bordered: { borderWidth: StyleSheet.hairlineWidth * 2, borderColor: palette.border },
+  padded: { padding: space[3], gap: space[2] },
 });

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { LIMITS } from "@/lib/validation";
-import { Button, Card, Chip, Row, Stack, Text, TextField } from "@/components/ui";
+import { Button, Card, SelectField, Stack, Text, TextField } from "@/components/ui";
 import { CustomFieldsEditor } from "@/features/incidents";
 import type { ReportDraft } from "../lib/draft-store";
-import { CATEGORIES } from "../lib/categories";
+import { CATEGORY_OPTIONS, isListedCategory, OTHER_CATEGORY } from "../lib/categories";
 
 export interface DetailsSectionProps {
   draft: ReportDraft;
@@ -13,35 +13,50 @@ export interface DetailsSectionProps {
 
 const counter = (value: string, max: number) => `${value.trim().length}/${max}`;
 
-/** Category (free text with suggestions), title, description with counters, and extra details. */
+/**
+ * Category is a dropdown of the usual hazards; "Other" opens a text box for a custom category
+ * (sent as typed, up to 60 characters). Then title, description with counters, and extra details.
+ */
 export function DetailsSection({ draft, errors, onChange }: DetailsSectionProps) {
   const [showExtra, setShowExtra] = useState(false);
-  const suggestions = CATEGORIES.filter((c) =>
-    c.toLowerCase().includes(draft.category.trim().toLowerCase()),
-  ).slice(0, 4);
+  // "Other" with nothing typed yet has no category value of its own, so remember the choice here.
+  const [otherChosen, setOtherChosen] = useState(
+    draft.category !== "" && !isListedCategory(draft.category),
+  );
+  const custom = otherChosen || (draft.category !== "" && !isListedCategory(draft.category));
+  const choice = custom ? OTHER_CATEGORY : draft.category === "" ? null : draft.category;
   return (
     <Card>
       <Stack gap={4}>
         <Stack gap={2}>
-          <TextField
+          <SelectField
             label="Category"
-            value={draft.category}
-            onChangeText={(category) => onChange({ category })}
-            helper={counter(draft.category, LIMITS.category)}
-            error={errors.category}
+            value={choice}
+            options={CATEGORY_OPTIONS}
+            placeholder="Choose a category"
+            error={custom ? undefined : errors.category}
+            onChange={(value) => {
+              if (value === OTHER_CATEGORY) {
+                setOtherChosen(true);
+                onChange({ category: "" });
+              } else {
+                setOtherChosen(false);
+                onChange({ category: value });
+              }
+            }}
             testID="report-category"
           />
-          {draft.category.trim() !== suggestions[0] && suggestions.length > 0 ? (
-            <Row gap={2} wrap>
-              {suggestions.map((s) => (
-                <Chip
-                  key={s}
-                  label={s}
-                  selected={draft.category === s}
-                  onPress={() => onChange({ category: s })}
-                />
-              ))}
-            </Row>
+          {custom ? (
+            <TextField
+              label="Custom category"
+              value={draft.category}
+              onChangeText={(category) => onChange({ category })}
+              placeholder="What kind of hazard is it?"
+              helper={counter(draft.category, LIMITS.category)}
+              error={errors.category}
+              maxLength={LIMITS.category}
+              testID="report-category-custom"
+            />
           ) : null}
         </Stack>
         <TextField

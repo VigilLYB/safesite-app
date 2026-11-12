@@ -41,7 +41,7 @@ export function SimilarTab({ incidentId, canCluster, onLinkUnder }: SimilarTabPr
                 <Badge label={`${formatSimilarity(item.similarity)} similar`} />
               </Row>
               <Text variant="label">{displayTitle(item)}</Text>
-              <SeverityBadge severity={item.severity} showPips={false} />
+              <SeverityBadge severity={item.severity} size="sm" />
               <Row gap={2} wrap>
                 <Button
                   label="Open"

@@ -46,9 +46,10 @@ describeLive("LIVE auth + RBAC at the API edge", () => {
     await as("worker");
     expect((await failure(() => usersApi.list())).status).toBe(403);
     expect((await failure(() => analyticsApi.summary({}))).status).toBe(403);
+    // The role check runs before the lookup, so even a non-existent id is 403 for a worker.
     expect(
       (await failure(() => incidentsApi.similar("00000000-0000-4000-8000-000000000000"))).status,
-    ).toBe(404);
+    ).toBe(403);
   });
 
   it("supervisors can read users but only managers can create them or blueprints", async () => {

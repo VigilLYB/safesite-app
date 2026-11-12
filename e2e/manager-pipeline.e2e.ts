@@ -1,5 +1,6 @@
 import { actionsApi, analyticsApi, incidentsApi, type Incident } from "@/lib/api";
-import { endpoints, rawRequest } from "./raw";
+import { request } from "@/lib/api/client";
+import { anything, endpoints } from "./raw";
 import { as, defaultBlueprint, describeLive, failure, report, RUN, words } from "./support";
 
 /** Drive a fresh report all the way to RESOLVED as staff. */
@@ -28,7 +29,7 @@ describeLive("LIVE manager: close, reopen, analytics", () => {
   it("a resolved report is waiting for the manager, who alone can close or reopen it", async () => {
     incident = await resolved();
     expect(incident.status).toBe("RESOLVED");
-    expect(incident.permissions.transitions).toEqual(["close", "reopen"]);
+    expect([...incident.permissions.transitions].sort()).toEqual(["close", "reopen"]);
     const queue = await incidentsApi.list({ status: "RESOLVED", limit: 100 });
     expect(queue.items.some((i) => i.id === incident.id)).toBe(true);
     expect(incident.permissions.canEdit).toBe(false); // nobody edits a resolved report
@@ -140,8 +141,14 @@ describeLive("LIVE manager: close, reopen, analytics", () => {
       analyticsApi.summary({ from: "2026-11-12T00:00:00.000Z", to: "2026-11-01T00:00:00.000Z" }),
     );
     expect(backwards.status).toBe(400);
-    const area = await failure(() => rawRequest(endpoints.summary, undefined));
-    void area;
+    const area = await failure(() =>
+      request({
+        endpoint: endpoints.summary,
+        query: { areaId: "00000000-0000-4000-8000-000000000000" },
+        schema: anything,
+      }),
+    );
+    expect(area.status).toBe(400); // the summary has no area filter (strict query)
   });
 
   it("heatmap needs a blueprint, lists areas, and honours cell size", async () => {

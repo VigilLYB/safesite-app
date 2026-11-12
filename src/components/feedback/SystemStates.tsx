@@ -1,7 +1,6 @@
-import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Button, Icon, Screen, Text } from "@/components/ui";
-import { space } from "@/lib/theme";
+import { Screen } from "@/components/ui";
+import { StateLayout } from "./StateLayout";
 
 interface StateProps {
   icon: "warn" | "shield" | "map" | "wifi";
@@ -15,16 +14,13 @@ interface StateProps {
 function StateScreen({ icon, title, message, actionLabel, onAction, testID }: StateProps) {
   return (
     <Screen testID={testID}>
-      <View style={styles.box} accessibilityRole="summary">
-        <Icon name={icon} size={36} />
-        <Text variant="title" accessibilityRole="header">
-          {title}
-        </Text>
-        <Text tone="muted" style={styles.center}>
-          {message}
-        </Text>
-        <Button label={actionLabel} onPress={onAction} size="desk" />
-      </View>
+      <StateLayout
+        icon={icon}
+        title={title}
+        message={message}
+        primary={{ label: actionLabel, onPress: onAction }}
+        size="page"
+      />
     </Screen>
   );
 }
@@ -74,25 +70,15 @@ export function ServiceUnavailableScreen({ onRetry }: { onRetry: () => void }) {
 export function RecordNotFound({ what = "report" }: { what?: string }) {
   const router = useRouter();
   return (
-    <View style={styles.box} accessibilityRole="summary" testID="record-not-found">
-      <Icon name="map" size={32} />
-      <Text variant="heading">{`${what[0]?.toUpperCase()}${what.slice(1)} not found or not shared with you`}</Text>
-      <Button
-        label="Go back"
-        variant="secondary"
-        size="desk"
-        onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
-      />
-    </View>
+    <StateLayout
+      icon="map"
+      title={`${what[0]?.toUpperCase()}${what.slice(1)} not found or not shared with you`}
+      message="It may have been removed, or it belongs to someone else."
+      secondary={{
+        label: "Go back",
+        onPress: () => (router.canGoBack() ? router.back() : router.replace("/")),
+      }}
+      testID="record-not-found"
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  box: {
-    alignItems: "center",
-    gap: space[3],
-    paddingVertical: space[7],
-    paddingHorizontal: space[4],
-  },
-  center: { textAlign: "center" },
-});

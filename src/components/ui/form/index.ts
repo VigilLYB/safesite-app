@@ -4,3 +4,5 @@ export { TextField } from "./TextField";
 export type { TextFieldProps } from "./TextField";
 export { Toggle } from "./Toggle";
 export type { ToggleProps } from "./Toggle";
+export { DateRangeField, describeRange } from "./DateRangeField";
+export type { DateRangeFieldProps, DayRangeValue } from "./DateRangeField";

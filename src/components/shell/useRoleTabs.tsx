@@ -16,11 +16,13 @@ export function useRoleTabOptions(): ResolvedOptions {
   const { isTablet } = useBreakpoint();
   return {
     headerShown: false,
+    // A quick cross-fade between tabs instead of an instant swap.
+    animation: "fade",
     tabBarPosition: isTablet ? "left" : "bottom",
     tabBarLabelPosition: isTablet ? "beside-icon" : "below-icon",
-    tabBarActiveTintColor: isTablet ? palette.onInk : palette.ink,
-    tabBarInactiveTintColor: palette.ink2,
-    tabBarActiveBackgroundColor: isTablet ? palette.ink : palette.grey100,
+    tabBarActiveTintColor: palette.ink,
+    tabBarInactiveTintColor: palette.grey500,
+    tabBarActiveBackgroundColor: isTablet ? palette.grey200 : "transparent",
     tabBarLabelStyle: { fontFamily: fonts.semibold, fontSize: 12 },
     tabBarItemStyle: {
       borderRadius: radii.control,
@@ -28,7 +30,7 @@ export function useRoleTabOptions(): ResolvedOptions {
       marginVertical: isTablet ? space[1] : 0,
     },
     tabBarStyle: {
-      backgroundColor: isTablet ? palette.grey100 : palette.surface,
+      backgroundColor: isTablet ? palette.grey50 : palette.surface,
       borderTopWidth: 0,
       borderRightWidth: 0,
       ...(isTablet

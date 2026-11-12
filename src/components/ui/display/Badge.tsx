@@ -13,9 +13,9 @@ export interface BadgeProps {
 export function Badge({ label, tone = "neutral", icon }: BadgeProps) {
   const inverse = tone === "inverse";
   return (
-    <View style={[styles.pill, { backgroundColor: inverse ? palette.ink : palette.grey100 }]}>
-      {icon ? <Icon name={icon} size={14} color={inverse ? palette.onInk : palette.ink} /> : null}
-      <Text variant="label" tone={inverse ? "inverse" : "default"}>
+    <View style={[styles.pill, { backgroundColor: inverse ? palette.grey700 : palette.grey100 }]}>
+      {icon ? <Icon name={icon} size={12} color={inverse ? palette.onInk : palette.ink2} /> : null}
+      <Text variant="caption" tone={inverse ? "inverse" : "default"}>
         {label}
       </Text>
     </View>
@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "flex-start",
     gap: space[1],
-    minHeight: 28,
+    minHeight: 24,
     paddingHorizontal: space[2],
     borderRadius: radii.control,
   },

@@ -1,11 +1,13 @@
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { isApiError } from "@/lib/api";
-import { formatDateTime } from "@/lib/format";
+import { displayTitle, formatDateTime } from "@/lib/format";
+import { isStaff } from "@/lib/permissions";
 import { actorRoleLabel } from "@/lib/labels";
 import { isPositiveInt, isUuid } from "@/lib/validation";
 import { Banner, DetailSkeleton, ErrorState, RecordNotFound } from "@/components/feedback";
 import { Button, Row, Screen, ScreenHeader, Stack, Text } from "@/components/ui";
-import { useIncidentTimeline, useIncidentVersion } from "../hooks/useIncidents";
+import { useSession } from "@/features/auth";
+import { useIncident, useIncidentTimeline, useIncidentVersion } from "../hooks/useIncidents";
 import { TimelineBar } from "./TimelineBar";
 import { VersionSnapshot } from "./VersionSnapshot";
 
@@ -19,6 +21,8 @@ export function IncidentVersionScreen() {
   const version = valid ? Number(versionText) : null;
   const snapshot = useIncidentVersion(incidentId, version);
   const timeline = useIncidentTimeline(incidentId, valid);
+  const head = useIncident(valid ? incidentId : "none");
+  const { user } = useSession();
 
   const current = `/incidents/${incidentId}` as Href;
   const nodes = timeline.data?.nodes ?? [];
@@ -34,8 +38,18 @@ export function IncidentVersionScreen() {
   return (
     <Screen testID="incident-version">
       <ScreenHeader
-        title={version ? `Version ${version}` : "Version"}
+        title={version ? `v${version}` : "Version"}
         onBack={() => (router.canGoBack() ? router.back() : router.replace(current))}
+        trail={[
+          {
+            label: isStaff(user?.role) ? "Incidents" : "My reports",
+            onPress: () => router.replace("/incidents" as Href),
+          },
+          {
+            label: head.data ? displayTitle(head.data) : "Report",
+            onPress: () => router.replace(current),
+          },
+        ]}
       />
       {!valid ? <RecordNotFound what="version" /> : null}
       {valid && snapshot.isPending ? <DetailSkeleton lines={4} /> : null}

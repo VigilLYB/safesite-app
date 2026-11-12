@@ -44,3 +44,6 @@ yarn-error.*
 .env*
 !.env.example
 coverage/
+
+# live e2e run manifests (ids to purge; see e2e/purge.js)
+.e2e-runs/

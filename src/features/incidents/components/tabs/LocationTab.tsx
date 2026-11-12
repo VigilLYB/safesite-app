@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Incident } from "@/lib/api";
 import { locationSourceLabel } from "@/lib/labels";
 import { Button, Stack, Text } from "@/components/ui";
-import { DetailSkeleton, ErrorState, MutationError } from "@/components/feedback";
+import { ErrorState, MapSkeleton, MutationError } from "@/components/feedback";
 import {
   BlueprintMap,
   BlueprintPinPicker,
@@ -28,7 +28,7 @@ export function LocationTab({ incident, error, busy, onMove }: LocationTabProps)
   const plan = useBlueprint(blueprintId);
   const { location } = incident;
 
-  if (plan.isPending && blueprintId) return <DetailSkeleton lines={2} />;
+  if (plan.isPending && blueprintId) return <MapSkeleton />;
   if (plan.isError) return <ErrorState error={plan.error} onRetry={() => void plan.refetch()} />;
 
   const pinned =

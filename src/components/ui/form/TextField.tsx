@@ -30,7 +30,7 @@ export interface TextFieldProps extends Pick<
 
 /**
  * Visible label above, helper below, error below with an icon: never placeholder-only.
- * Borderless: a tonal fill plus a 3pt bottom bar marks the field edge (>= 3:1).
+ * Flat: a white box with a hairline outline that darkens on focus and on error.
  */
 export function TextField({
   label,
@@ -43,7 +43,7 @@ export function TextField({
 }: TextFieldProps) {
   const [focused, setFocused] = useState(false);
   const { handlers, ringStyle } = useFocusRing();
-  const barColor = error ? palette.ink : focused ? palette.focus : palette.fieldBar;
+  const borderColor = error ? palette.ink : focused ? palette.ink : palette.grey300;
 
   return (
     <View style={styles.field}>
@@ -51,7 +51,7 @@ export function TextField({
         {label}
         {required ? " *" : ""}
       </Text>
-      <View style={[styles.box, { borderBottomColor: barColor }, error ? styles.errorFill : null]}>
+      <View style={[styles.box, { borderColor }, (focused || error) && styles.boxStrong]}>
         <TextInput
           {...input}
           multiline={multiline}
@@ -59,7 +59,7 @@ export function TextField({
           accessibilityLabel={label}
           accessibilityHint={helper}
           aria-invalid={Boolean(error)}
-          placeholderTextColor={palette.ink2}
+          placeholderTextColor={palette.grey500}
           onFocus={() => {
             setFocused(true);
             handlers.onFocus();
@@ -95,22 +95,21 @@ export function TextField({
 const styles = StyleSheet.create({
   field: { gap: space[1] },
   box: {
-    backgroundColor: palette.grey100,
-    borderBottomWidth: 3,
-    borderTopLeftRadius: radii.control,
-    borderTopRightRadius: radii.control,
-    minHeight: touch.worker,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderRadius: radii.card,
+    minHeight: touch.desk + 4,
     justifyContent: "center",
   },
-  errorFill: { backgroundColor: palette.grey200 },
+  boxStrong: { borderWidth: 1.5 },
   input: {
-    ...typeScale.bodyLg,
+    ...typeScale.body,
     fontFamily: fonts.medium,
     color: palette.ink,
     paddingHorizontal: space[3],
     paddingVertical: space[2],
   },
-  multiline: { minHeight: 120, textAlignVertical: "top", paddingTop: space[3] },
+  multiline: { minHeight: 104, textAlignVertical: "top", paddingTop: space[3] },
   row: { flexDirection: "row", gap: space[1], alignItems: "flex-start" },
   flex: { flex: 1 },
 });

@@ -28,7 +28,7 @@ export function Banner({
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
       testID={testID}
-      style={[styles.box, { backgroundColor: inverse ? palette.ink : palette.grey100 }]}
+      style={[styles.box, inverse ? styles.inverse : styles.subtle]}
     >
       <Icon name={icon} size={18} color={inverse ? palette.onInk : palette.ink} />
       <Text variant="caption" tone={inverse ? "inverse" : "default"} style={styles.flex}>
@@ -46,9 +46,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space[2],
-    borderRadius: radii.control,
+    borderRadius: radii.card,
     paddingHorizontal: space[3],
     paddingVertical: space[2],
   },
+  subtle: {
+    backgroundColor: palette.grey50,
+    borderWidth: StyleSheet.hairlineWidth * 2,
+    borderColor: palette.border,
+  },
+  inverse: { backgroundColor: palette.grey700 },
   flex: { flex: 1 },
 });

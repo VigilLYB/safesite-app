@@ -1,23 +1,33 @@
 /**
- * SafeSite design tokens (monochrome / flat / borderless).
- * The interface is greyscale; the only colour is severity, and red belongs to CRITICAL alone.
+ * SafeSite design tokens (monochrome, flat).
+ * The interface is greyscale: hierarchy comes from shades of grey and hairline borders, never from
+ * heavy fills or offset shadows. Colour is only for meaning (severity, heatmaps, warnings) and red
+ * belongs to CRITICAL alone.
  * This is the only file allowed to contain raw hex values.
  */
 
 export const palette = {
   ink: "#16181D",
   ink2: "#4A4F59",
-  inkPressed: "#3D434D",
+  inkPressed: "#2F333A",
   hover: "#FAFAFB",
-  page: "#F2F3F5",
+  page: "#F4F5F7",
   surface: "#FFFFFF",
   onInk: "#FFFFFF",
-  grey100: "#E8EAED",
-  grey200: "#D9DCE1",
-  grey300: "#C3C7CE",
-  fieldBar: "#6B7280",
+  grey50: "#F8F9FA",
+  grey100: "#EEF0F2",
+  grey200: "#E2E5E9",
+  grey300: "#CDD1D7",
+  grey400: "#A1A7B0",
+  grey500: "#7A808A",
+  grey600: "#5A6069",
+  grey700: "#3A3F47",
+  /** Hairline borders on cards, fields and dividers. */
+  border: "#DEE1E6",
+  /** Control outlines that must read as an edge (checkbox, radio, field): >= 3:1. */
+  fieldBar: "#7A808A",
   focus: "#0B3FD1",
-  scrim: "rgba(22,24,29,0.5)",
+  scrim: "rgba(22,24,29,0.4)",
 } as const;
 
 export type Severity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
@@ -38,11 +48,11 @@ export interface SeverityTokens {
 
 export const severityTokens: Record<Severity, SeverityTokens> = {
   LOW: {
-    fill: "#2F6FD6",
-    tint: "#CFE3FB",
-    glyph: "#FFFFFF",
-    badgeShape: "#2F6FD6",
-    badgeGlyph: "#FFFFFF",
+    fill: "#6FA8EE",
+    tint: "#DCEBFC",
+    glyph: "#16181D",
+    badgeShape: "#6FA8EE",
+    badgeGlyph: "#16181D",
     text: "#16181D",
   },
   MEDIUM: {
@@ -71,8 +81,11 @@ export const severityTokens: Record<Severity, SeverityTokens> = {
   },
 };
 
-/** Greyscale, luminance-monotonic heatmap ramp: safe for every kind of colour blindness. */
-export const heatRamp = ["#F3F4F6", "#D5D9DF", "#A3AAB5", "#6E7683", "#3D434D", "#16181D"] as const;
+/**
+ * Heatmap ramp: warm, single-hue family (amber to brown) whose luminance falls strictly, so it still
+ * reads in greyscale and for colour-blind viewers. No red: red stays exclusive to Critical.
+ */
+export const heatRamp = ["#FFF4CC", "#FFD966", "#F6A93B", "#E07B24", "#A84A12", "#5C2408"] as const;
 
 export const radii = { control: 4, card: 6, sheet: 10, pill: 999 } as const;
 
@@ -98,21 +111,23 @@ export const fonts = {
 export type TextVariant =
   "display" | "title" | "heading" | "bodyLg" | "body" | "label" | "caption" | "mono" | "kpi";
 
+/** One step smaller than before throughout: dense enough for desk use, still >= 11pt for captions. */
 export const typeScale: Record<
   TextVariant,
   { fontFamily: string; fontSize: number; lineHeight: number; letterSpacing?: number }
 > = {
-  display: { fontFamily: fonts.bold, fontSize: 36, lineHeight: 42, letterSpacing: -0.7 },
-  title: { fontFamily: fonts.bold, fontSize: 24, lineHeight: 30, letterSpacing: -0.4 },
-  heading: { fontFamily: fonts.semibold, fontSize: 18, lineHeight: 24 },
-  bodyLg: { fontFamily: fonts.medium, fontSize: 18, lineHeight: 26 },
-  body: { fontFamily: fonts.medium, fontSize: 16, lineHeight: 24 },
-  label: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 20 },
-  caption: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
-  mono: { fontFamily: fonts.mono, fontSize: 13, lineHeight: 18 },
-  kpi: { fontFamily: fonts.monoBold, fontSize: 34, lineHeight: 40 },
+  display: { fontFamily: fonts.bold, fontSize: 28, lineHeight: 34, letterSpacing: -0.5 },
+  title: { fontFamily: fonts.semibold, fontSize: 20, lineHeight: 26, letterSpacing: -0.3 },
+  heading: { fontFamily: fonts.semibold, fontSize: 16, lineHeight: 22 },
+  bodyLg: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 22 },
+  body: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 },
+  label: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18 },
+  caption: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16 },
+  mono: { fontFamily: fonts.mono, fontSize: 12, lineHeight: 16 },
+  kpi: { fontFamily: fonts.monoBold, fontSize: 28, lineHeight: 34 },
 };
 
-export const motion = { press: 100, state: 150, sheet: 260 } as const;
+/** Durations (ms). Motion is short and eased; it is skipped entirely under reduced motion. */
+export const motion = { press: 100, state: 180, sheet: 220 } as const;
 
 export const zIndex = { base: 0, sticky: 10, overlay: 40, modal: 100 } as const;

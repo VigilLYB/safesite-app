@@ -1,3 +1,4 @@
+import { M4A_CONTENT_TYPE, SERVER_ACCEPTS_M4A } from "@/lib/audio-support";
 import type { UploadKind } from "./schemas/upload";
 
 /** Mirrors POST /v1/uploads on the backend (see frontend-page-guide §2.6). */
@@ -15,6 +16,7 @@ export const UPLOAD_RULES: Record<
       "audio/flac",
       "audio/ogg",
       "audio/opus",
+      ...(SERVER_ACCEPTS_M4A ? [M4A_CONTENT_TYPE] : []),
     ],
   },
   blueprint: {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Redirect, Tabs, usePathname, type Href } from "expo-router";
+import type { BottomTabBarProps } from "expo-router/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { healthApi, healthKeys, type Role } from "@/lib/api";
 import { clock } from "@/lib/clock";
@@ -8,9 +9,9 @@ import { formatTime } from "@/lib/format";
 import { navFor, routes, type RouteKey } from "@/lib/routes";
 import { useBreakpoint } from "@/lib/responsive";
 import { palette, space } from "@/lib/theme";
-import { Banner, ListSkeleton, ServiceUnavailableScreen } from "@/components/feedback";
-import { Screen } from "@/components/ui";
+import { AppSkeleton, Banner, ServiceUnavailableScreen } from "@/components/feedback";
 import { useSession } from "@/features/auth";
+import { PhoneTabBar } from "./PhoneTabBar";
 import { tabIcon, useRoleTabOptions } from "./useRoleTabs";
 
 const SESSION_WARNING_MS = 5 * 60_000;
@@ -70,7 +71,11 @@ function RoleTabs({ role }: { role: Role }) {
   const listed = new Set(nav.map((item) => item.key));
   const hidden = SEGMENTS.filter((key) => !listed.has(key));
   return (
-    <Tabs screenOptions={options}>
+    <Tabs
+      screenOptions={options}
+      // Phones get the custom bar (sliding indicator, no ripple); tablets keep the sidebar.
+      {...(isTablet ? {} : { tabBar: (props: BottomTabBarProps) => <PhoneTabBar {...props} /> })}
+    >
       {nav.map((item) => (
         <Tabs.Screen
           key={item.key}
@@ -105,9 +110,9 @@ export function AppShell() {
 
   if (state.status === "loading") {
     return (
-      <Screen>
-        <ListSkeleton rows={3} />
-      </Screen>
+      <View style={styles.root}>
+        <AppSkeleton />
+      </View>
     );
   }
   if (state.status === "unavailable") return <ServiceUnavailableScreen onRetry={retryBoot} />;

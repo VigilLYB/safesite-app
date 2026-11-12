@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, SelectField, Stack, Text } from "@/components/ui";
-import { EmptyState, ErrorState, ListSkeleton } from "@/components/feedback";
+import { EmptyState, ErrorState, ListSkeleton, MapSkeleton } from "@/components/feedback";
 import { useBlueprint, useBlueprints } from "../hooks/useBlueprints";
 import { BlueprintMap } from "./BlueprintMap";
 
@@ -54,7 +54,7 @@ export function BlueprintPinPicker({
           }}
         />
       ) : null}
-      {detail.isPending ? <ListSkeleton rows={1} /> : null}
+      {detail.isPending ? <MapSkeleton /> : null}
       {detail.isError ? (
         <ErrorState error={detail.error} onRetry={() => void detail.refetch()} />
       ) : null}

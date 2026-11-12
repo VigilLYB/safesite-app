@@ -54,16 +54,17 @@ export function SelectField<T extends string>({
         onPress={() => setOpen(true)}
         testID={testID}
         {...handlers}
-        style={[
+        style={({ pressed }) => [
           styles.box,
-          { borderBottomColor: error ? palette.ink : palette.fieldBar },
+          { borderColor: error ? palette.ink : palette.grey300 },
+          pressed && { backgroundColor: palette.grey50 },
           ringStyle as ViewStyle,
         ]}
       >
-        <Text variant="bodyLg" tone={selected ? "default" : "muted"} style={styles.flex}>
+        <Text variant="body" tone={selected ? "default" : "muted"} style={styles.flex}>
           {selected?.label ?? placeholder}
         </Text>
-        <Icon name="down" size={20} />
+        <Icon name="down" size={18} color={palette.ink2} />
       </Pressable>
       {error ? (
         <View style={styles.row} accessible accessibilityRole="alert">
@@ -87,17 +88,22 @@ export function SelectField<T extends string>({
                 onChange(option.value);
                 setOpen(false);
               }}
-              style={[styles.option, isSelected && styles.optionSelected]}
+              style={({ pressed }) => [
+                styles.option,
+                (isSelected || pressed) && styles.optionSelected,
+              ]}
             >
+              <View style={[styles.radio, isSelected && styles.radioOn]}>
+                {isSelected ? <View style={styles.radioDot} /> : null}
+              </View>
               <View style={styles.flex}>
-                <Text variant="bodyLg">{option.label}</Text>
+                <Text variant="body">{option.label}</Text>
                 {option.description ? (
                   <Text variant="caption" tone="muted">
                     {option.description}
                   </Text>
                 ) : null}
               </View>
-              {isSelected ? <Icon name="check" /> : null}
             </Pressable>
           );
         })}
@@ -112,12 +118,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space[2],
-    minHeight: touch.worker,
+    minHeight: touch.desk + 4,
     paddingHorizontal: space[3],
-    backgroundColor: palette.grey100,
-    borderBottomWidth: 3,
-    borderTopLeftRadius: radii.control,
-    borderTopRightRadius: radii.control,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderRadius: radii.card,
   },
   row: { flexDirection: "row", gap: space[1], alignItems: "center" },
   flex: { flex: 1 },
@@ -125,9 +130,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space[3],
-    minHeight: touch.worker,
+    minHeight: touch.desk + 4,
     paddingHorizontal: space[3],
     borderRadius: radii.control,
   },
-  optionSelected: { backgroundColor: palette.grey100 },
+  optionSelected: { backgroundColor: palette.grey50 },
+  radio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: palette.fieldBar,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioOn: { borderColor: palette.ink },
+  radioDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: palette.ink },
 });
