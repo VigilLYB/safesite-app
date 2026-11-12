@@ -1,7 +1,9 @@
 import type { z } from "zod";
 import { config } from "@/lib/config";
 import { authBridge } from "./auth-bridge";
-import { ApiError, kindFromStatus } from "./errors";
+import { newId } from "@/lib/id";
+import { toApiError } from "./client-errors";
+import { ApiError } from "./errors";
 import { buildPath, type Endpoint, type PathParams } from "./registry";
 
 type QueryValue = string | number | boolean | null | undefined;
@@ -19,7 +21,7 @@ export interface RequestOptions<T> {
   timeoutMs?: number | undefined;
 }
 
-const DEFAULT_TIMEOUT_MS = 20_000;
+const DEFAULT_TIMEOUT_MS = 15_000;
 
 function toQueryString(query: Query | undefined): string {
   if (!query) return "";
@@ -41,39 +43,29 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
-function toApiError(status: number, payload: unknown): ApiError {
-  const envelope = (payload as { error?: Record<string, unknown> } | undefined)?.error;
-  const code = typeof envelope?.code === "string" ? envelope.code : `HTTP_${status}`;
-  const message =
-    typeof envelope?.message === "string" ? envelope.message : `Request failed (${status})`;
-  const correlationId =
-    typeof envelope?.correlationId === "string" ? envelope.correlationId : undefined;
-  return new ApiError({
-    status,
-    code,
-    message,
-    kind: kindFromStatus(status),
-    correlationId,
-    details: envelope?.details,
-  });
-}
-
 /** The only place the app talks HTTP to the SafeSite API. */
 export async function request<T>(options: RequestOptions<T>): Promise<T> {
   const { endpoint, schema, params, query, body, auth = true, signal } = options;
   const url = `${config.API_BASE_URL}${buildPath(endpoint, params)}${toQueryString(query)}`;
 
-  const headers: Record<string, string> = { Accept: "application/json" };
+  const correlationId = newId();
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "X-Correlation-Id": correlationId,
+  };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   const token = auth ? authBridge.getToken() : null;
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const controller = new AbortController();
   let timedOut = false;
-  const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  const timer = setTimeout(
+    () => {
+      timedOut = true;
+      controller.abort();
+    },
+    options.timeoutMs ?? endpoint.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+  );
   const onAbort = () => controller.abort();
   signal?.addEventListener("abort", onAbort);
 
@@ -109,7 +101,11 @@ export async function request<T>(options: RequestOptions<T>): Promise<T> {
   const payload = await readJson(response);
 
   if (!response.ok) {
-    const error = toApiError(response.status, payload);
+    const error = toApiError(
+      response.status,
+      payload,
+      response.headers.get("x-correlation-id") ?? correlationId,
+    );
     if (error.kind === "unauthorized" && auth) authBridge.notifyUnauthorized();
     throw error;
   }

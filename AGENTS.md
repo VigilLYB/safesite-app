@@ -46,7 +46,7 @@ Docs: https://docs.expo.dev/eas/index.md
 
 Industrial hazard reporting for Plant X. Roles: **Worker** (phone, gloves, one hand), **Supervisor** and
 **Safety Manager** (tablet/desktop). One visual language, monochrome + severity colour only.
-API: see `docs/openapi.snapshot.json` (read-only reference; never call mutating endpoints against the shared backend to "test").
+API: see `docs/openapi.snapshot.json`. Offline tests never touch the network; the live suites (`npm run test:e2e`) are the only code that calls the hosted API, and writes there are intentional and opt-in.
 
 ## Before you change anything
 
@@ -58,12 +58,12 @@ API: see `docs/openapi.snapshot.json` (read-only reference; never call mutating 
 ## Structure
 
 ```
-src/app/            thin routes, one group per role: (worker) (supervisor) (manager)
+src/app/            thin routes: one (app) group for every role; RouteGuard per section (src/lib/routes.ts)
 src/features/<x>/   components/ hooks/ lib/ index.ts   (import a feature ONLY through its index.ts)
 src/components/ui   the only UI primitives; import from "@/components/ui", never a deep path
 src/components/domain   cross-feature domain atoms (SeverityBadge, StatusPill)
 src/components/feedback EmptyState, ErrorState, QueryBoundary, Skeleton, MutationError
-src/components/shell    RoleTabsLayout: one navigator shape for every role
+src/components/shell    AppShell (session gate + role navigation + banners) and RouteGuard
 src/lib/api         client, registry (all endpoints), schemas (Zod), query-keys, *.api.ts
 src/lib/theme       tokens: the ONLY file with raw hex values
 src/lib/format      all date / number / unit formatting ("—" for unknown, never 0)

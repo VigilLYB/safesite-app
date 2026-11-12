@@ -11,11 +11,22 @@ interface StackProps {
   justify?: ViewStyle["justifyContent"] | undefined;
   wrap?: boolean | undefined;
   style?: ViewStyle | undefined;
+  testID?: string | undefined;
 }
 
-export function Stack({ children, gap = 3, align, justify, style }: Omit<StackProps, "wrap">) {
+export function Stack({
+  children,
+  gap = 3,
+  align,
+  justify,
+  style,
+  testID,
+}: Omit<StackProps, "wrap">) {
   return (
-    <View style={[{ gap: space[gap], alignItems: align, justifyContent: justify }, style]}>
+    <View
+      testID={testID}
+      style={[{ gap: space[gap], alignItems: align, justifyContent: justify }, style]}
+    >
       {children}
     </View>
   );
@@ -28,9 +39,11 @@ export function Row({
   justify,
   wrap = false,
   style,
+  testID,
 }: StackProps) {
   return (
     <View
+      testID={testID}
       style={[
         {
           flexDirection: "row",

@@ -81,3 +81,14 @@ export function humanize(value: string | null | undefined): string {
 export function shortId(id: string): string {
   return `HZ-${id.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
 }
+
+/** Report display title (guide §2.7): title, else category, else "Untitled report". */
+export function displayTitle(report: {
+  title?: string | null | undefined;
+  category?: string | null | undefined;
+}): string {
+  return report.title?.trim() || report.category?.trim() || "Untitled report";
+}
+
+/** Similarity 0..1 as a whole percentage: 0.8423 -> "84%". */
+export const formatSimilarity = (value: number | null | undefined): string => formatPercent(value);

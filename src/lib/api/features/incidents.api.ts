@@ -43,7 +43,10 @@ export interface SubmitIncidentInput {
         gps?: { lat: number; lng: number; accuracyM?: number | undefined } | undefined;
       }
     | undefined;
+  customFields?: CustomFields | undefined;
 }
+
+export type CustomFields = Record<string, string | number | boolean | null>;
 
 export interface EditIncidentInput {
   expectedVersion: number;
@@ -51,6 +54,9 @@ export interface EditIncidentInput {
   description?: string | null | undefined;
   category?: string | null | undefined;
   severity?: Severity | undefined;
+  photoKey?: string | null | undefined;
+  /** The server replaces the whole object: always send the complete, merged value. */
+  customFields?: CustomFields | undefined;
   note?: string | undefined;
 }
 
@@ -109,10 +115,11 @@ export const incidentsApi = {
       body,
       schema: incidentSchema,
     }),
-  similar: (id: string, signal?: AbortSignal) =>
+  similar: (id: string, limit = 5, signal?: AbortSignal) =>
     request({
       endpoint: endpoints.incidentSimilar,
       params: { id },
+      query: { limit },
       schema: similarIncidentsSchema,
       signal,
     }),

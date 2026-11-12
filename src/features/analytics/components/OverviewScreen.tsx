@@ -1,81 +1,145 @@
-import { StyleSheet, View } from "react-native";
-import { humanize } from "@/lib/format";
-import { space } from "@/lib/theme";
-import { Screen, ScreenHeader, Stack, SeverityShape } from "@/components/ui";
-import { QueryBoundary } from "@/components/feedback";
-import { SEVERITIES, severityLabel, statusLabel } from "@/components/domain";
-import type { IncidentStatus } from "@/lib/api";
-import { useAnalyticsControls, useAnalyticsSummary } from "../hooks/useAnalytics";
+import { useMemo } from "react";
+import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import type { AnalyticsSummary } from "@/lib/api";
+import { formatCount, formatDate, formatDuration } from "@/lib/format";
+import { shiftLabel, STATUS_ORDER } from "@/lib/labels";
+import { severityTokens } from "@/lib/theme";
+import { Card, Screen, ScreenHeader, Stack, Text } from "@/components/ui";
+import { statusLabel, SEVERITIES, severityLabel } from "@/components/domain";
+import { EmptyState, ErrorState, TileSkeleton } from "@/components/feedback";
+import { useAnalyticsSummary } from "../hooks/useAnalytics";
+import {
+  fillBuckets,
+  parseAnalyticsParams,
+  STATUS_TAB,
+  toAnalyticsFilters,
+  toUrl,
+  type AnalyticsState,
+} from "../lib/params";
 import { AnalyticsFilterBar } from "./AnalyticsFilterBar";
-import { BreakdownBars } from "./BreakdownBars";
-import { KpiStrip } from "./KpiStrip";
-import { SupervisorTable } from "./SupervisorTable";
+import { AnalyticsTabs } from "./AnalyticsTabs";
+import { Breakdown } from "./Breakdown";
 
-/** Site-wide safety picture: KPIs first, then where and when risk concentrates. */
-export function OverviewScreen() {
-  const controls = useAnalyticsControls();
-  const query = useAnalyticsSummary(controls.filters);
-
+function Tiles({ data }: { data: AnalyticsSummary }) {
+  const tiles = [
+    ["Reports", formatCount(data.totals.reports)],
+    ["Open", formatCount(data.totals.open)],
+    ["Duplicates", formatCount(data.totals.duplicates)],
+    ["Active actions", formatCount(data.actions.active)],
+    ["Overdue actions", formatCount(data.actions.overdue)],
+    ["Actions done", formatCount(data.actions.done)],
+    ["Avg time to close", formatDuration(data.actions.avgHoursToClose)],
+  ] as const;
   return (
-    <Screen onRefresh={() => void query.refetch()} refreshing={query.isRefetching}>
-      <ScreenHeader eyebrow="Plant X" title="Plant risk overview" />
-      <AnalyticsFilterBar controls={controls} />
-      <QueryBoundary query={query}>
-        {(summary) => (
-          <Stack gap={4}>
-            <KpiStrip summary={summary} />
-            <View style={styles.grid}>
-              <View style={styles.cell}>
-                <BreakdownBars
-                  title="Reports by severity"
-                  rows={SEVERITIES.map((severity) => ({
-                    key: severity,
-                    label: severityLabel[severity],
-                    count: summary.bySeverity.find((bucket) => bucket.key === severity)?.count ?? 0,
-                    leading: <SeverityShape severity={severity} size={18} />,
-                  })).reverse()}
-                />
-              </View>
-              <View style={styles.cell}>
-                <BreakdownBars
-                  title="Reports by status"
-                  rows={summary.byStatus.map((bucket) => ({
-                    key: bucket.key,
-                    label: statusLabel[bucket.key as IncidentStatus] ?? humanize(bucket.key),
-                    count: bucket.count,
-                  }))}
-                />
-              </View>
-              <View style={styles.cell}>
-                <BreakdownBars
-                  title="Reports by shift"
-                  rows={summary.byShift.map((bucket) => ({
-                    key: bucket.key,
-                    label: bucket.name,
-                    count: bucket.count,
-                  }))}
-                />
-              </View>
-              <View style={styles.cell}>
-                <BreakdownBars
-                  title="Top areas"
-                  rows={summary.topAreas.map((bucket) => ({
-                    key: bucket.key,
-                    label: bucket.key,
-                    count: bucket.count,
-                  }))}
-                />
-              </View>
-            </View>
-            <SupervisorTable supervisors={summary.supervisors} />
-          </Stack>
-        )}
-      </QueryBoundary>
-    </Screen>
+    <Stack gap={3} testID="kpi-tiles">
+      {tiles.map(([label, value]) => (
+        <Card key={label} testID={`kpi-${label}`}>
+          <Text variant="caption" tone="muted">
+            {label}
+          </Text>
+          <Text variant="kpi">{value}</Text>
+        </Card>
+      ))}
+    </Stack>
   );
 }
 
-const styles = StyleSheet.create({
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: space[4] },
-  cell: { flexGrow: 1, flexBasis: 320 },
-});
+/** Analytics overview (guide §4.8): KPIs and breakdowns for the chosen range, shift and severity. */
+export function AnalyticsOverviewScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const state = useMemo(() => parseAnalyticsParams(params as never), [params]);
+  const filters = useMemo(() => toAnalyticsFilters(state), [state]);
+  const query = useAnalyticsSummary(filters);
+  const update = (patch: Partial<AnalyticsState>) =>
+    router.setParams(toUrl({ ...state, ...patch }));
+  const data = query.data;
+
+  const statusRows = data
+    ? fillBuckets(STATUS_ORDER, data.byStatus).map((row) => ({
+        key: row.key,
+        label: statusLabel[row.key as keyof typeof statusLabel] ?? row.key,
+        count: row.count,
+        onPress: () =>
+          router.push(
+            `/incidents?tab=${STATUS_TAB[row.key]}&from=${state.fromDay}&to=${state.toDay}${state.severity ? `&severity=${state.severity}` : ""}` as Href,
+          ),
+      }))
+    : [];
+
+  return (
+    <Screen
+      onRefresh={() => void query.refetch()}
+      refreshing={query.isRefetching}
+      testID="analytics-screen"
+    >
+      <ScreenHeader title="Analytics" subtitle="Reports and follow-through for the plant." />
+      <AnalyticsTabs current="overview" query={toUrl(state)} />
+      <AnalyticsFilterBar state={state} onChange={update} showBlueprint />
+      {query.isPending ? <TileSkeleton tiles={7} /> : null}
+      {query.isError && !data ? (
+        <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+      ) : null}
+      {data && data.totals.reports === 0 ? (
+        <EmptyState icon="chart" title="No reports in this period" />
+      ) : null}
+      {data && data.totals.reports > 0 ? (
+        <Stack gap={4}>
+          <Text variant="caption" tone="muted" testID="range">
+            {formatDate(data.range.from)} to{" "}
+            {formatDate(new Date(new Date(data.range.to).getTime() - 1).toISOString())} (
+            {data.timezone})
+          </Text>
+          <Tiles data={data} />
+          <Breakdown title="By status" rows={statusRows} testID="by-status" />
+          <Breakdown
+            title="By severity"
+            testID="by-severity"
+            rows={fillBuckets(SEVERITIES, data.bySeverity).map((row) => ({
+              key: row.key,
+              label: severityLabel[row.key as keyof typeof severityLabel],
+              count: row.count,
+              color: severityTokens[row.key as keyof typeof severityTokens].fill,
+            }))}
+          />
+          <Breakdown
+            title="By shift"
+            testID="by-shift"
+            rows={(["A", "B", "C"] as const).map((shift) => {
+              const found = data.byShift.find((b) => b.key === shift);
+              return {
+                key: shift,
+                label: shiftLabel[shift],
+                count: found?.count ?? 0,
+                detail: `Risk score ${formatCount(found?.score ?? 0)}`,
+              };
+            })}
+          />
+          <Breakdown
+            title="Top areas"
+            testID="top-areas"
+            rows={data.topAreas.map((area) => ({
+              key: area.key,
+              label: area.key === "Unpinned" ? "Unpinned" : area.key,
+              count: area.count,
+              detail: `Risk score ${formatCount(area.score)}`,
+            }))}
+          />
+          <Card testID="follow-through">
+            <Stack gap={2}>
+              <Text variant="heading" accessibilityRole="header">
+                Actions assigned by
+              </Text>
+              {data.supervisors.length === 0 ? <Text tone="muted">No actions yet.</Text> : null}
+              {data.supervisors.map((s) => (
+                <Text key={s.id} variant="caption">
+                  {s.fullName}: {s.assigned} assigned, {s.done} done, {s.overdue} overdue
+                </Text>
+              ))}
+            </Stack>
+          </Card>
+        </Stack>
+      ) : null}
+    </Screen>
+  );
+}

@@ -1,3 +1,3 @@
+export { AppShell, DemoModeBanner, SessionEndingBanner } from "./AppShell";
+export { RouteGuard } from "./RouteGuard";
 export { tabIcon, useRoleTabOptions } from "./useRoleTabs";
-export { RoleTabsLayout } from "./RoleTabsLayout";
-export type { RoleTab, RoleTabsLayoutProps } from "./RoleTabsLayout";

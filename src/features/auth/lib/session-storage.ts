@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { z } from "zod";
 import { userSchema } from "@/lib/api";
@@ -11,10 +12,17 @@ const sessionSchema = z.object({
 });
 export type Session = z.infer<typeof sessionSchema>;
 
-/** The token lives in the OS keychain / keystore, never in plain storage. */
+/**
+ * The token lives in the OS keychain / keystore, never in plain storage. SecureStore does not
+ * exist on web, and the guide forbids localStorage/sessionStorage for tokens: on web the session
+ * is held in memory only, so a page reload signs the person out.
+ */
+let webSession: string | null = null;
+const isWeb = () => Platform.OS === "web";
+
 export async function loadSession(): Promise<Session | null> {
   try {
-    const raw = await SecureStore.getItemAsync(KEY);
+    const raw = isWeb() ? webSession : await SecureStore.getItemAsync(KEY);
     if (!raw) return null;
     const parsed = sessionSchema.safeParse(JSON.parse(raw));
     return parsed.success ? parsed.data : null;
@@ -24,10 +32,15 @@ export async function loadSession(): Promise<Session | null> {
 }
 
 export async function saveSession(session: Session): Promise<void> {
+  if (isWeb()) {
+    webSession = JSON.stringify(session);
+    return;
+  }
   await SecureStore.setItemAsync(KEY, JSON.stringify(session));
 }
 
 export async function clearSession(): Promise<void> {
+  webSession = null;
   try {
     await SecureStore.deleteItemAsync(KEY);
   } catch {

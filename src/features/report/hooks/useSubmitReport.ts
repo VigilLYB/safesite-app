@@ -1,52 +1,49 @@
 import { useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { analyticsKeys, incidentKeys, incidentsApi, uploadFile, type Severity } from "@/lib/api";
-import { AUDIO_CONTENT_TYPE, PHOTO_CONTENT_TYPE } from "../lib/report-schema";
-import type { ReportDraft } from "./useReportDraft";
+import { analyticsKeys, incidentKeys, incidentsApi, uploadFile } from "@/lib/api";
+import {
+  submitWithRecovery,
+  type FileToSend,
+  type SubmitDeps,
+  type UploadedKey,
+} from "../lib/submit";
+import { buildSubmitBody, type ReportInput } from "../lib/body";
+import { clock } from "@/lib/clock";
 
 export interface ReportSubmission {
-  draft: ReportDraft & { severity: Severity };
-  photoUri: string | null;
-  audioUri: string | null;
+  input: Omit<ReportInput, "photoKey" | "audioKey">;
+  photo: FileToSend | null;
+  audio: FileToSend | null;
 }
 
+const realDeps: SubmitDeps = {
+  upload: uploadFile,
+  submit: incidentsApi.submit,
+  sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  nowMs: () => clock.nowMs(),
+};
+
 /**
- * Uploads media, then submits once. Uploaded keys are remembered, so a retry after a failed submit
- * doesn't upload again, and the same clientSubmissionId makes the server replay rather than duplicate.
+ * Uploads media then submits once. Keys are remembered for 9 minutes so a retry doesn't upload
+ * again, and the unchanged `clientSubmissionId` makes the server replay rather than duplicate.
  */
-export function useSubmitReport() {
+export function useSubmitReport(deps: SubmitDeps = realDeps) {
   const queryClient = useQueryClient();
-  const uploaded = useRef(new Map<string, string>());
-
-  const keyFor = async (uri: string, kind: "photo" | "audio", contentType: string) => {
-    const known = uploaded.current.get(uri);
-    if (known) return known;
-    const key = await uploadFile({ uri, kind, contentType });
-    uploaded.current.set(uri, key);
-    return key;
-  };
-
+  const cache = useRef(new Map<string, UploadedKey>());
   return useMutation({
-    mutationFn: async ({ draft, photoUri, audioUri }: ReportSubmission) => {
-      const [photoKey, audioKey] = await Promise.all([
-        photoUri ? keyFor(photoUri, "photo", PHOTO_CONTENT_TYPE) : undefined,
-        audioUri ? keyFor(audioUri, "audio", AUDIO_CONTENT_TYPE) : undefined,
-      ]);
-      return incidentsApi.submit({
-        clientSubmissionId: draft.clientSubmissionId,
-        severity: draft.severity,
-        category: draft.category.trim() || undefined,
-        title: draft.title.trim() || undefined,
-        description: draft.description.trim() || undefined,
-        photoKey,
-        audioKey,
-        location: draft.pin
-          ? { blueprintId: draft.pin.blueprintId, pin: { x: draft.pin.x, y: draft.pin.y } }
-          : undefined,
-      });
-    },
-    onSuccess: () => {
+    mutationFn: ({ input, photo, audio }: ReportSubmission) =>
+      submitWithRecovery({
+        photo,
+        audio,
+        cache: cache.current,
+        deps,
+        build: (keys) => buildSubmitBody({ ...input, ...keys }),
+      }),
+    onSuccess: (result) => {
+      queryClient.setQueryData(incidentKeys.detail(result.incident.id), result.incident);
       void queryClient.invalidateQueries({ queryKey: incidentKeys.lists() });
+      const parent = result.ai?.clusteredUnder?.incidentId;
+      if (parent) void queryClient.invalidateQueries({ queryKey: incidentKeys.detail(parent) });
       void queryClient.invalidateQueries({ queryKey: analyticsKeys.all });
     },
   });

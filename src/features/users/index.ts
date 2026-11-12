@@ -1,1 +1,2 @@
-export { useUsers } from "./hooks/useUsers";
+export { UserPicker } from "./components/UserPicker";
+export { useCreateUser, useUsers } from "./hooks/useUsers";

@@ -2,6 +2,7 @@ import type { Query } from "./client";
 
 /** Hierarchical key factories. Defaults never go in a key prefix: invalidation matches by prefix. */
 export const sessionKeys = { me: ["session", "me"] as const };
+export const healthKeys = { all: ["health"] as const };
 
 export const userKeys = {
   all: ["users"] as const,
@@ -19,11 +20,12 @@ export const incidentKeys = {
   lists: () => [...incidentKeys.all, "list"] as const,
   list: (filters: Query) => [...incidentKeys.lists(), filters] as const,
   detail: (id: string) => [...incidentKeys.all, "detail", id] as const,
-  timeline: (id: string) => [...incidentKeys.all, "timeline", id] as const,
-  version: (id: string, version: number) => [...incidentKeys.all, "version", id, version] as const,
-  similar: (id: string) => [...incidentKeys.all, "similar", id] as const,
-  duplicates: (id: string) => [...incidentKeys.all, "duplicates", id] as const,
-  ppe: (id: string) => [...incidentKeys.all, "ppe", id] as const,
+  /** Sub-resources sit under the detail key, so invalidating the detail refreshes the open tab. */
+  timeline: (id: string) => [...incidentKeys.detail(id), "versions"] as const,
+  version: (id: string, version: number) => [...incidentKeys.timeline(id), version] as const,
+  similar: (id: string, limit = 5) => [...incidentKeys.detail(id), "similar", limit] as const,
+  duplicates: (id: string) => [...incidentKeys.detail(id), "duplicates"] as const,
+  ppe: (id: string) => [...incidentKeys.detail(id), "ppe-scans"] as const,
 };
 
 export const actionKeys = {

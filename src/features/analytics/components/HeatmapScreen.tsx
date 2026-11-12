@@ -1,49 +1,172 @@
-import { useState } from "react";
-import { Screen, ScreenHeader, SelectField, Stack } from "@/components/ui";
+import { useEffect, useMemo, useState } from "react";
+import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { formatCount } from "@/lib/format";
+import { severityWeight } from "@/lib/labels";
+import { LIMITS } from "@/lib/validation";
+import {
+  Button,
+  Card,
+  ChipGroup,
+  Row,
+  Screen,
+  ScreenHeader,
+  SelectField,
+  Stack,
+  Text,
+  TextField,
+} from "@/components/ui";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/feedback";
-import { useBlueprints } from "@/features/blueprints";
-import { useAnalyticsControls } from "../hooks/useAnalytics";
+import { BlueprintMap, useBlueprint, useBlueprints } from "@/features/blueprints";
+import { useHeatmap } from "../hooks/useAnalytics";
+import {
+  clampCell,
+  parseAnalyticsParams,
+  toAnalyticsFilters,
+  toUrl,
+  type AnalyticsState,
+} from "../lib/params";
 import { AnalyticsFilterBar } from "./AnalyticsFilterBar";
-import { HeatmapView } from "./HeatmapView";
+import { AnalyticsTabs } from "./AnalyticsTabs";
 
+const PRESETS = ["25", "50", "100", "200"] as const;
+
+/** Risk heatmap (guide §4.9): a blueprint is required; areas are listed even with zero reports. */
 export function HeatmapScreen() {
-  const controls = useAnalyticsControls();
-  const blueprints = useBlueprints();
-  const [chosen, setChosen] = useState<string | null>(null);
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const state = useMemo(() => parseAnalyticsParams(params as never), [params]);
+  const filters = useMemo(() => toAnalyticsFilters(state), [state]);
+  const list = useBlueprints();
+  const blueprintId =
+    state.blueprintId ?? list.data?.find((b) => b.isDefault)?.id ?? list.data?.[0]?.id;
+  const plan = useBlueprint(blueprintId);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [cellText, setCellText] = useState(String(state.cellSize));
+  const [debounced, setDebounced] = useState(state.cellSize);
 
-  const items = blueprints.data ?? [];
-  const blueprintId = chosen ?? items.find((item) => item.isDefault)?.id ?? items[0]?.id;
+  // Debounce cell-size changes by 300 ms (guide §4.9).
+  useEffect(() => {
+    const value = Number(cellText);
+    if (!Number.isFinite(value) || value < LIMITS.cellSize.min || value > LIMITS.cellSize.max)
+      return;
+    const timer = setTimeout(() => setDebounced(clampCell(value)), 300);
+    return () => clearTimeout(timer);
+  }, [cellText]);
 
+  const heat = useHeatmap({ ...filters, blueprintId: undefined }, blueprintId, debounced);
+  const update = (patch: Partial<AnalyticsState>) =>
+    router.setParams(toUrl({ ...state, ...patch }));
+  const cellInvalid =
+    cellText !== "" &&
+    (Number(cellText) < 10 || Number(cellText) > 500 || !Number.isFinite(Number(cellText)));
+
+  const viewReports = (areaId: string) =>
+    router.push(
+      `/incidents?tab=all&blueprintId=${blueprintId}&areaId=${areaId}&from=${state.fromDay}&to=${state.toDay}${state.severity ? `&severity=${state.severity}` : ""}` as Href,
+    );
+
+  const areas = heat.data?.areas ?? [];
   return (
-    <Screen onRefresh={() => void blueprints.refetch()} refreshing={blueprints.isRefetching}>
-      <ScreenHeader
-        eyebrow="Plant X"
-        title="Risk heatmap"
-        subtitle="Where incidents cluster on the floor plan"
-      />
-      <AnalyticsFilterBar controls={controls} />
-      {blueprints.isPending ? <ListSkeleton rows={2} /> : null}
-      {blueprints.isError ? (
-        <ErrorState error={blueprints.error} onRetry={() => void blueprints.refetch()} />
-      ) : null}
-      {blueprints.data && items.length === 0 ? (
-        <EmptyState
-          icon="map"
-          title="No floor plan yet"
-          message="Register a facility blueprint to see the heatmap."
+    <Screen
+      onRefresh={() => void heat.refetch()}
+      refreshing={heat.isRefetching}
+      testID="heatmap-screen"
+    >
+      <ScreenHeader title="Analytics" subtitle="Where reports cluster on the plant." />
+      <AnalyticsTabs current="heatmap" query={toUrl(state)} />
+      {list.data && list.data.length > 1 ? (
+        <SelectField
+          label="Blueprint"
+          value={blueprintId ?? null}
+          options={list.data.map((b) => ({ value: b.id, label: b.name }))}
+          onChange={(id) => update({ blueprintId: id })}
         />
       ) : null}
-      {blueprintId ? (
+      <Stack gap={2}>
+        <Text variant="label">Cell size (px)</Text>
+        <ChipGroup
+          label="Cell size"
+          options={PRESETS.map((p) => ({ value: p, label: p }))}
+          value={(PRESETS as readonly string[]).includes(cellText) ? cellText : "50"}
+          onChange={(value) => {
+            setCellText(value);
+            setDebounced(Number(value));
+            update({ cellSize: Number(value) });
+          }}
+        />
+        <TextField
+          label="Custom cell size"
+          value={cellText}
+          onChangeText={setCellText}
+          keyboardType="numeric"
+          helper="Whole pixels from 10 to 500."
+          error={cellInvalid ? "Enter a whole number from 10 to 500." : undefined}
+          testID="cell-size"
+        />
+      </Stack>
+      <AnalyticsFilterBar state={state} onChange={update} />
+
+      {list.isError ? <ErrorState error={list.error} onRetry={() => void list.refetch()} /> : null}
+      {list.data && list.data.length === 0 ? (
+        <EmptyState icon="map" title="No blueprints yet" />
+      ) : null}
+      {(plan.isPending && blueprintId) || (heat.isPending && blueprintId) ? (
+        <ListSkeleton rows={3} />
+      ) : null}
+      {plan.isError ? <ErrorState error={plan.error} onRetry={() => void plan.refetch()} /> : null}
+      {heat.isError && !heat.data ? (
+        <ErrorState error={heat.error} onRetry={() => void heat.refetch()} />
+      ) : null}
+      {plan.data && heat.data ? (
         <Stack gap={4}>
-          {items.length > 1 ? (
-            <SelectField
-              label="Floor plan"
-              value={blueprintId}
-              options={items.map((item) => ({ value: item.id, label: item.name }))}
-              onChange={setChosen}
-            />
+          <BlueprintMap
+            blueprint={plan.data}
+            accessibilityLabel={`Incident heatmap of ${plan.data.name}. ${formatCount(heat.data.totals.reports)} pinned reports.`}
+            areas={plan.data.areas.map((a) => ({ ...a, highlighted: a.id === selected }))}
+            cells={heat.data.cells}
+            cellSize={heat.data.cellSize}
+            onImageError={() => void plan.refetch()}
+          />
+          {heat.data.cells.length === 0 ? (
+            <EmptyState icon="map" title="No pinned reports in this period" />
           ) : null}
-          <HeatmapView blueprintId={blueprintId} filters={controls.filters} />
+          <Text variant="caption" tone="muted" testID="legend">
+            Weights: Low {severityWeight.LOW}, Medium {severityWeight.MEDIUM}, High{" "}
+            {severityWeight.HIGH}, Critical {severityWeight.CRITICAL}. Darker cells have more risk.
+          </Text>
+          <Text variant="caption" tone="muted">
+            {formatCount(heat.data.totals.reports)} pinned reports on this blueprint. Reports
+            without a pin are not on the map.
+          </Text>
+          <Card testID="area-table">
+            <Stack gap={3}>
+              <Text variant="heading" accessibilityRole="header">
+                Areas
+              </Text>
+              {areas.map((area) => (
+                <Row key={area.areaId} justify="space-between" gap={2}>
+                  <Button
+                    label={area.name}
+                    variant={selected === area.areaId ? "secondary" : "tertiary"}
+                    size="desk"
+                    onPress={() => setSelected(selected === area.areaId ? null : area.areaId)}
+                    testID={`area-${area.areaId}`}
+                  />
+                  <Text variant="mono">
+                    {formatCount(area.count)} · {formatCount(area.score)}
+                  </Text>
+                </Row>
+              ))}
+              {selected ? (
+                <Button
+                  label="View reports"
+                  size="desk"
+                  onPress={() => viewReports(selected)}
+                  testID="view-area-reports"
+                />
+              ) : null}
+            </Stack>
+          </Card>
         </Stack>
       ) : null}
     </Screen>

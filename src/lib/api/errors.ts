@@ -49,10 +49,14 @@ export function kindFromStatus(status: number): ApiErrorKind {
 
 export const isApiError = (error: unknown): error is ApiError => error instanceof ApiError;
 
+export const isThrottled = (error: unknown): boolean => isApiError(error) && error.status === 429;
+
 export const isStaleVersion = (error: unknown): boolean =>
   isApiError(error) && error.code === "STALE_VERSION";
 
 const COPY: Partial<Record<string, string>> = {
+  THROTTLED: "SafeSite is busy. Try again in a moment.",
+  UPSTREAM_FAILED: "PPE scanning is unavailable right now. Try again later.",
   STALE_VERSION: "Someone else changed this report. Reload it and try again.",
   INVALID_CREDENTIALS: "Email or password is incorrect.",
   NETWORK_ERROR: "No connection. Check your signal and try again.",
@@ -75,4 +79,28 @@ export function userMessage(error: unknown): string {
   const message = error.message.trim();
   if (message && message.length <= 160 && !LOOKS_INTERNAL.test(message)) return message;
   return "That request could not be completed.";
+}
+
+/**
+ * Map a 400 VALIDATION_FAILED `details: [{ path, message }]` onto form fields.
+ * Paths the form doesn't know (or business-rule errors with no details) come back under "_form".
+ */
+export function fieldErrors(error: unknown): Record<string, string> {
+  if (!isApiError(error) || error.status !== 400) return {};
+  const out: Record<string, string> = {};
+  const details = error.details;
+  if (Array.isArray(details)) {
+    for (const item of details) {
+      const entry = item as { path?: unknown; message?: unknown };
+      const message = typeof entry.message === "string" ? entry.message : error.message;
+      const path = Array.isArray(entry.path)
+        ? entry.path.join(".")
+        : typeof entry.path === "string"
+          ? entry.path
+          : "_form";
+      out[path] ??= message;
+    }
+  }
+  if (Object.keys(out).length === 0) out._form = error.message;
+  return out;
 }

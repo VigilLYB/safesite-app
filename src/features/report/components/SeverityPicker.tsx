@@ -25,9 +25,7 @@ function Option({
       {...handlers}
       style={({ pressed }) => [
         styles.option,
-        {
-          backgroundColor: selected ? palette.grey100 : pressed ? palette.grey100 : palette.surface,
-        },
+        { backgroundColor: selected || pressed ? palette.grey100 : palette.surface },
         selected && styles.selected,
         ringStyle as ViewStyle,
       ]}
@@ -48,12 +46,12 @@ function Option({
   );
 }
 
-/** Four large targets: shape, label and a plain-language hint. The most important control. */
+/** Four large targets: shape, label and a plain-language hint. Default Medium, always sent. */
 export function SeverityPicker({
   value,
   onChange,
 }: {
-  value: Severity | null;
+  value: Severity;
   onChange: (value: Severity) => void;
 }) {
   return (
@@ -85,7 +83,7 @@ const styles = StyleSheet.create({
     paddingVertical: space[2],
     borderRadius: radii.card,
   },
-  selected: { boxShadow: `inset 4px 0 0 ${palette.ink}` },
+  selected: { borderLeftWidth: 4, borderLeftColor: palette.ink },
   text: { flex: 1, gap: 2 },
   bold: { fontWeight: "700" },
   radio: {

@@ -1,6 +1,7 @@
 import { ApiError } from "../errors";
 import { request } from "../client";
 import { endpoints } from "../registry";
+import { validateUpload } from "../upload-rules";
 import { presignUploadResponseSchema, type UploadKind } from "../schemas";
 
 const UPLOAD_TIMEOUT_MS = 60_000;
@@ -10,19 +11,35 @@ const UPLOAD_TIMEOUT_MS = 60_000;
  * that POST /v1/incidents expects as photoKey / audioKey.
  */
 export async function uploadFile(input: {
-  uri: string;
+  /** A file/blob/data URI to read, or the bytes themselves. */
+  uri?: string | undefined;
+  blob?: Blob | undefined;
   kind: UploadKind;
   contentType: string;
 }): Promise<string> {
   let blob: Blob;
   try {
-    blob = await (await fetch(input.uri)).blob();
+    blob = input.blob ?? (await (await fetch(input.uri as string)).blob());
   } catch {
     throw new ApiError({
       status: 0,
       code: "FILE_UNREADABLE",
       message: "Could not read the file",
       kind: "unknown",
+    });
+  }
+
+  const problem = validateUpload({
+    kind: input.kind,
+    contentType: input.contentType,
+    sizeBytes: blob.size,
+  });
+  if (problem) {
+    throw new ApiError({
+      status: 400,
+      code: "VALIDATION_FAILED",
+      message: problem,
+      kind: "validation",
     });
   }
 

@@ -65,7 +65,14 @@ module.exports = defineConfig([
   { files: ["src/lib/theme/tokens.ts"], rules: { "no-restricted-syntax": restricted(HEX) } },
   { files: ["src/lib/api/**"], rules: { "no-restricted-globals": "off" } },
   {
-    files: ["**/*.test.ts", "**/*.test.tsx", "jest.setup.ts"],
+    files: [
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "jest.setup.ts",
+      "src/test/**",
+      "e2e/**",
+      "jest.e2e.config.js",
+    ],
     rules: {
       "no-restricted-syntax": "off",
       "no-restricted-globals": "off",

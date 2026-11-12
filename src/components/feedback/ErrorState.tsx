@@ -15,7 +15,7 @@ export function ErrorState({ error, onRetry }: ErrorStateProps) {
     kind === "forbidden"
       ? "No access"
       : kind === "notFound"
-        ? "Not found"
+        ? "Not found or not shared with you"
         : kind === "network" || kind === "timeout"
           ? "Can't reach the server"
           : "Something went wrong";
@@ -30,7 +30,7 @@ export function ErrorState({ error, onRetry }: ErrorStateProps) {
       </Text>
       {reference ? (
         <Text variant="mono" tone="muted" selectable>
-          Ref {reference}
+          Reference: {reference}
         </Text>
       ) : null}
       {onRetry && kind !== "forbidden" ? (

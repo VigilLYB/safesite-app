@@ -1,19 +1,35 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   actionKeys,
   actionsApi,
   analyticsKeys,
   compact,
   incidentKeys,
+  type Action,
   type ActionFilters,
   type AssignActionInput,
 } from "@/lib/api";
+import { isUuid } from "@/lib/validation";
+import { ACTIONS_PAGE_SIZE } from "../lib/list-params";
 
-export function useActions(filters: ActionFilters, enabled = true) {
-  return useQuery({
+/** Offset paging, 50 per page; stops when fewer than 50 come back (there is no total count). */
+export function useActionList(filters: ActionFilters) {
+  return useInfiniteQuery({
     queryKey: actionKeys.list(compact(filters)),
-    queryFn: ({ signal }) => actionsApi.list(filters, signal),
-    enabled,
+    queryFn: ({ pageParam, signal }) =>
+      actionsApi.list({ ...filters, limit: ACTIONS_PAGE_SIZE, offset: pageParam }, signal),
+    initialPageParam: 0,
+    getNextPageParam: (last, _all, lastOffset) =>
+      last.length < ACTIONS_PAGE_SIZE ? undefined : lastOffset + ACTIONS_PAGE_SIZE,
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function useAction(id: string) {
+  return useQuery({
+    queryKey: actionKeys.detail(id),
+    queryFn: ({ signal }) => actionsApi.get(id, signal),
+    enabled: isUuid(id),
   });
 }
 
@@ -22,44 +38,54 @@ export function useActionTemplates(enabled = true) {
     queryKey: actionKeys.templates(),
     queryFn: ({ signal }) => actionsApi.templates(signal),
     enabled,
-    staleTime: 30 * 60_000,
+    staleTime: 60 * 60_000,
   });
 }
 
-/** Completing work can resolve the incident, so refresh incidents and analytics too. */
-function useRefreshAfterAction() {
-  const queryClient = useQueryClient();
-  return () => {
-    void queryClient.invalidateQueries({ queryKey: actionKeys.all });
-    void queryClient.invalidateQueries({ queryKey: incidentKeys.all });
-    void queryClient.invalidateQueries({ queryKey: analyticsKeys.all });
-  };
-}
-
 export function useAssignAction() {
-  const refresh = useRefreshAfterAction();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (v: { incidentId: string } & AssignActionInput) => {
       const { incidentId, ...body } = v;
       return actionsApi.assign(incidentId, body);
     },
-    onSuccess: refresh,
+    onSuccess: (action, variables) => {
+      queryClient.setQueryData(actionKeys.detail(action.id), action);
+      void queryClient.invalidateQueries({ queryKey: incidentKeys.detail(variables.incidentId) });
+      void queryClient.invalidateQueries({ queryKey: incidentKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: actionKeys.lists() });
+    },
+    onError: (error, variables) => {
+      // 409 (already has an active action) and 422 (no longer APPROVED): the report moved on.
+      void queryClient.invalidateQueries({ queryKey: incidentKeys.detail(variables.incidentId) });
+      return error;
+    },
   });
 }
 
-export function useCompleteMilestone() {
-  const refresh = useRefreshAfterAction();
+/** Completing work can resolve the incident, so refresh incidents and analytics too. */
+function useProgress<V>(mutationFn: (variables: V) => Promise<Action>) {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (v: { actionId: string; milestoneId: string }) =>
-      actionsApi.completeMilestone(v.actionId, v.milestoneId),
-    onSuccess: refresh,
+    mutationFn,
+    onSuccess: (action) => {
+      queryClient.setQueryData(actionKeys.detail(action.id), action);
+      void queryClient.invalidateQueries({ queryKey: actionKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: incidentKeys.detail(action.incident.id) });
+      void queryClient.invalidateQueries({ queryKey: incidentKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: analyticsKeys.all });
+    },
+    onError: (_error, _v) => {
+      // 403/422: the action moved on. Refetch so the buttons match the server.
+      void queryClient.invalidateQueries({ queryKey: actionKeys.all });
+    },
   });
 }
 
-export function useCompleteAction() {
-  const refresh = useRefreshAfterAction();
-  return useMutation({
-    mutationFn: (actionId: string) => actionsApi.complete(actionId),
-    onSuccess: refresh,
-  });
-}
+export const useCompleteMilestone = () =>
+  useProgress((v: { actionId: string; milestoneId: string }) =>
+    actionsApi.completeMilestone(v.actionId, v.milestoneId),
+  );
+
+export const useCompleteAction = () =>
+  useProgress((actionId: string) => actionsApi.complete(actionId));

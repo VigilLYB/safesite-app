@@ -5,3 +5,4 @@ export * from "./common";
 export * from "./incident";
 export * from "./upload";
 export * from "./user";
+export * from "./health";

@@ -1,7 +1,8 @@
-import { Button, Stack, Text } from "@/components/ui";
+import { useState } from "react";
+import { Button, SelectField, Stack, Text } from "@/components/ui";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/feedback";
-import { useDefaultBlueprint } from "../hooks/useBlueprints";
-import { BlueprintCanvas, PinMarker } from "./BlueprintCanvas";
+import { useBlueprint, useBlueprints } from "../hooks/useBlueprints";
+import { BlueprintMap } from "./BlueprintMap";
 
 export interface Pin {
   blueprintId: string;
@@ -12,27 +13,65 @@ export interface Pin {
 export interface BlueprintPinPickerProps {
   value: Pin | null;
   onChange: (pin: Pin | null) => void;
+  /** Start on this blueprint (e.g. the report's current one) instead of the default. */
+  initialBlueprintId?: string | null | undefined;
+  label?: string | undefined;
 }
 
-/** Optional: tap the floor plan to mark the exact spot. */
-export function BlueprintPinPicker({ value, onChange }: BlueprintPinPickerProps) {
-  const { blueprint, isPending, isError, error, refetch } = useDefaultBlueprint();
+/** Pick mode: tap the floor plan to mark the spot. A blueprint selector appears when there are several. */
+export function BlueprintPinPicker({
+  value,
+  onChange,
+  initialBlueprintId,
+  label = "Where is it? (optional)",
+}: BlueprintPinPickerProps) {
+  const list = useBlueprints();
+  const [chosen, setChosen] = useState<string | null>(
+    value?.blueprintId ?? initialBlueprintId ?? null,
+  );
+  const items = list.data;
+  const blueprintId =
+    chosen ?? items?.find((item) => item.isDefault)?.id ?? items?.[0]?.id ?? undefined;
+  const detail = useBlueprint(blueprintId);
 
-  if (isPending) return <ListSkeleton rows={1} />;
-  if (isError) return <ErrorState error={error} onRetry={() => void refetch()} />;
-  if (!blueprint)
+  if (list.isPending) return <ListSkeleton rows={1} />;
+  if (list.isError) return <ErrorState error={list.error} onRetry={() => void list.refetch()} />;
+  if (!items || items.length === 0) {
     return <EmptyState icon="map" title="No floor plan yet" message="Ask a manager to add one." />;
+  }
 
   return (
-    <Stack gap={2}>
-      <Text variant="label">Where is it? (optional)</Text>
-      <BlueprintCanvas
-        blueprint={blueprint}
-        accessibilityLabel={`Floor plan of ${blueprint.name}`}
-        onPressPoint={({ x, y }) => onChange({ blueprintId: blueprint.id, x, y })}
-      >
-        {(scale) => (value ? <PinMarker x={value.x} y={value.y} scale={scale} /> : null)}
-      </BlueprintCanvas>
+    <Stack gap={3}>
+      <Text variant="label">{label}</Text>
+      {items.length > 1 ? (
+        <SelectField
+          label="Floor plan"
+          value={blueprintId ?? null}
+          options={items.map((item) => ({ value: item.id, label: item.name }))}
+          onChange={(id) => {
+            setChosen(id);
+            onChange(null);
+          }}
+        />
+      ) : null}
+      {detail.isPending ? <ListSkeleton rows={1} /> : null}
+      {detail.isError ? (
+        <ErrorState error={detail.error} onRetry={() => void detail.refetch()} />
+      ) : null}
+      {detail.data ? (
+        <BlueprintMap
+          blueprint={detail.data}
+          accessibilityLabel={`Floor plan of ${detail.data.name}`}
+          areas={detail.data.areas}
+          pins={
+            value && value.blueprintId === detail.data.id
+              ? [{ id: "pin", ...value, draft: true }]
+              : []
+          }
+          onPick={({ x, y }) => onChange({ blueprintId: detail.data.id, x, y })}
+          onImageError={() => void detail.refetch()}
+        />
+      ) : null}
       {value ? (
         <Button label="Clear pin" variant="tertiary" size="desk" onPress={() => onChange(null)} />
       ) : (
