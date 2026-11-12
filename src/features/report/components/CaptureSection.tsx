@@ -95,6 +95,7 @@ export function CaptureSection({ photo, voice }: { photo: PhotoCapture; voice: V
                   label="Delete"
                   variant="tertiary"
                   size="desk"
+                  destructive
                   onPress={voice.clear}
                   testID="remove-voice"
                 />

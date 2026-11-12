@@ -1,11 +1,47 @@
+import type { ReactNode } from "react";
+import { StyleSheet, View } from "react-native";
 import type { Incident } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { languageLabel, locationSourceLabel } from "@/lib/labels";
-import { Button, Card, KeyValue, Row, Stack, Text } from "@/components/ui";
+import { palette, space } from "@/lib/theme";
+import { Button, Card, Icon, Row, Section, Stack, Text, type IconName } from "@/components/ui";
 import { InlineNotice } from "@/components/feedback";
 import { SeverityBadge } from "@/components/domain";
 import { AudioPlayerButton, isMediaExpired, MediaMessage, MediaPhoto } from "@/features/media";
 import { labelFor } from "../../lib/custom-fields";
+
+function fieldValue(value: unknown): string {
+  return typeof value === "boolean" ? (value ? "Yes" : "No") : String(value ?? "—");
+}
+
+/** One bento tile: a small bordered card, icon + label on top, the value underneath. */
+function FactTile({
+  icon,
+  label,
+  children,
+  testID,
+}: {
+  icon?: IconName | undefined;
+  label: string;
+  children: ReactNode;
+  testID?: string | undefined;
+}) {
+  return (
+    <View style={styles.tile}>
+      <Card testID={testID}>
+        <Stack gap={1}>
+          <Row gap={1} align="center">
+            {icon ? <Icon name={icon} size={14} color={palette.grey500} /> : null}
+            <Text variant="caption" tone="muted">
+              {label}
+            </Text>
+          </Row>
+          {children}
+        </Stack>
+      </Card>
+    </View>
+  );
+}
 
 export interface OverviewTabProps {
   incident: Incident;
@@ -50,49 +86,68 @@ export function OverviewTab({ incident, onRefreshMedia, onOpenLocation }: Overvi
         </Card>
       ) : null}
 
-      {incident.description ? (
-        <Stack gap={1}>
-          <Text variant="label">Description</Text>
-          <Text>{incident.description}</Text>
+      <Section title="Details" icon="clip">
+        <Stack gap={3}>
+          {incident.description ? (
+            <Card testID="description-tile">
+              <Stack gap={1}>
+                <Row gap={1} align="center">
+                  <Icon name="list" size={14} color={palette.grey500} />
+                  <Text variant="caption" tone="muted">
+                    Description
+                  </Text>
+                </Row>
+                <Text>{incident.description}</Text>
+              </Stack>
+            </Card>
+          ) : null}
+          <View style={styles.bento}>
+            <FactTile icon="filter" label="Category" testID="fact-category">
+              <Text variant="label">{incident.category ?? "—"}</Text>
+            </FactTile>
+            <FactTile label="Severity" testID="fact-severity">
+              <SeverityBadge severity={incident.severity} />
+            </FactTile>
+            <FactTile icon="user" label="Reporter" testID="fact-reporter">
+              <Text variant="label">{incident.reporter.fullName}</Text>
+            </FactTile>
+            <FactTile icon="calendar" label="Created" testID="fact-created">
+              <Text variant="label">{formatDateTime(incident.createdAt)}</Text>
+            </FactTile>
+            <FactTile icon="history" label="Updated" testID="fact-updated">
+              <Text variant="label">{formatDateTime(incident.updatedAt)}</Text>
+            </FactTile>
+            {extra.map(([key, value]) => (
+              <FactTile key={key} label={labelFor(key)}>
+                <Text variant="label">{fieldValue(value)}</Text>
+              </FactTile>
+            ))}
+          </View>
         </Stack>
-      ) : null}
-      <Row gap={5} wrap>
-        <KeyValue label="Category" value={incident.category ?? "—"} />
-        <Stack gap={1}>
-          <Text variant="caption" tone="muted">
-            Severity
-          </Text>
-          <SeverityBadge severity={incident.severity} />
-        </Stack>
-        <KeyValue label="Reporter" value={incident.reporter.fullName} />
-        <KeyValue label="Created" value={formatDateTime(incident.createdAt)} />
-        <KeyValue label="Updated" value={formatDateTime(incident.updatedAt)} />
-      </Row>
-      {extra.length > 0 ? (
-        <Stack gap={1}>
-          <Text variant="label">Extra details</Text>
-          {extra.map(([key, value]) => (
-            <Text key={key} variant="caption">
-              {labelFor(key)}:{" "}
-              {typeof value === "boolean" ? (value ? "Yes" : "No") : String(value ?? "—")}
+      </Section>
+      <Section title="Location" icon="pin">
+        <Card>
+          <Stack gap={2}>
+            <Text variant="caption" tone="muted">
+              {incident.location.areaName ?? "No area"} ·{" "}
+              {locationSourceLabel[incident.location.source]}
             </Text>
-          ))}
-        </Stack>
-      ) : null}
-      <Stack gap={1}>
-        <Text variant="label">Location</Text>
-        <Text variant="caption" tone="muted">
-          {incident.location.areaName ?? "No area"} ·{" "}
-          {locationSourceLabel[incident.location.source]}
-        </Text>
-        <Button
-          label="View on the floor plan"
-          variant="tertiary"
-          size="desk"
-          icon="map"
-          onPress={onOpenLocation}
-        />
-      </Stack>
+            <Button
+              label="View on the floor plan"
+              variant="tertiary"
+              size="desk"
+              icon="map"
+              onPress={onOpenLocation}
+            />
+          </Stack>
+        </Card>
+      </Section>
     </Stack>
   );
 }
+
+const styles = StyleSheet.create({
+  // Bento grid: three tiles per row on wide screens, reflowing to two then one as space narrows.
+  bento: { flexDirection: "row", flexWrap: "wrap", gap: space[2] },
+  tile: { flexGrow: 1, flexBasis: 140, minWidth: 110 },
+});

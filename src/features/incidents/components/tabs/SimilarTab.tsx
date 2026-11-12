@@ -61,7 +61,13 @@ export function SimilarTab({ incidentId, canCluster, onLinkUnder }: SimilarTabPr
             </Card>
           ))}
           {limit < 20 && data.items.length >= limit ? (
-            <Button label="Show more" variant="tertiary" size="desk" onPress={() => setLimit(20)} />
+            <Button
+              label="Show more"
+              variant="tertiary"
+              size="desk"
+              icon="down"
+              onPress={() => setLimit(20)}
+            />
           ) : null}
         </Stack>
       )}

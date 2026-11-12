@@ -3,7 +3,7 @@ import type { Incident } from "@/lib/api";
 import { formatDateTime, formatSimilarity, shortId } from "@/lib/format";
 import { canRetryTranscription } from "@/lib/permissions";
 import { Banner } from "@/components/feedback";
-import { Row, Stack, Text } from "@/components/ui";
+import { Card, Row, Stack, Text } from "@/components/ui";
 import { SeverityBadge, StatusPill } from "@/components/domain";
 import { useSession } from "@/features/auth";
 
@@ -30,17 +30,21 @@ export function IncidentHeader({
 
   return (
     <Stack gap={3}>
-      <Row gap={2} wrap align="center">
-        <StatusPill status={incident.status} />
-        <SeverityBadge severity={incident.severity} />
-        <Text variant="mono" tone="muted">
-          #{shortId(incident.id)}
-        </Text>
-      </Row>
-      <Text variant="caption" tone="muted">
-        Reported by {incident.reporter.fullName} · {formatDateTime(incident.createdAt)} · Last
-        change: {incident.lastChange.label}, {formatDateTime(incident.lastChange.at)}
-      </Text>
+      <Card>
+        <Stack gap={2}>
+          <Row gap={2} wrap align="center">
+            <StatusPill status={incident.status} />
+            <SeverityBadge severity={incident.severity} />
+            <Text variant="mono" tone="muted">
+              #{shortId(incident.id)}
+            </Text>
+          </Row>
+          <Text variant="caption" tone="muted">
+            Reported by {incident.reporter.fullName} · {formatDateTime(incident.createdAt)} · Last
+            change: {incident.lastChange.label}, {formatDateTime(incident.lastChange.at)}
+          </Text>
+        </Stack>
+      </Card>
 
       {incident.cluster.isDuplicate && parentId ? (
         <Banner

@@ -14,7 +14,7 @@ import {
   RecordNotFound,
   TimelineSkeleton,
 } from "@/components/feedback";
-import { Screen, ScreenHeader, Stack, TabStrip, type TabOption } from "@/components/ui";
+import { Card, Screen, ScreenHeader, Section, Stack, TabStrip, type TabOption } from "@/components/ui";
 import { AssignActionWizard } from "@/features/actions";
 import { useSession } from "@/features/auth";
 import { useIncidentChanges } from "../hooks/useIncidentChanges";
@@ -183,21 +183,27 @@ function Loaded({
       ) : null}
       {timeline.isPending ? <TimelineSkeleton /> : null}
       {timeline.data ? (
-        <TimelineBar
-          nodes={timeline.data.nodes}
-          currentVersion={incident.version}
-          onSelect={(version) =>
-            router.push(`/incidents/${incident.id}/versions/${version}` as Href)
-          }
-        />
+        <Section title="Version history">
+          <Card tone="subtle" padded={false}>
+            <TimelineBar
+              nodes={timeline.data.nodes}
+              currentVersion={incident.version}
+              onSelect={(version) =>
+                router.push(`/incidents/${incident.id}/versions/${version}` as Href)
+              }
+            />
+          </Card>
+        </Section>
       ) : null}
-      <ActionBar
-        incident={incident}
-        busy={changes.busy}
-        onOpen={setDialog}
-        onRefresh={refreshAll}
-        refreshing={refreshing}
-      />
+      <Card>
+        <ActionBar
+          incident={incident}
+          busy={changes.busy}
+          onOpen={setDialog}
+          onRefresh={refreshAll}
+          refreshing={refreshing}
+        />
+      </Card>
       <TabStrip label="Report sections" tabs={tabs} value={current} onChange={setTab} />
 
       {current === "overview" ? (

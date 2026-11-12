@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { StyleSheet, View } from "react-native";
+import { palette } from "@/lib/theme";
 import { LIMITS } from "@/lib/validation";
 import { Button, Card, SelectField, Stack, Text, TextField } from "@/components/ui";
 import { CustomFieldsEditor } from "@/features/incidents";
@@ -76,10 +78,12 @@ export function DetailsSection({ draft, errors, onChange }: DetailsSectionProps)
           error={errors.description}
           testID="report-description"
         />
+        <View style={styles.divider} />
         <Button
           label={showExtra ? "Hide extra details" : "Extra details"}
           variant="tertiary"
           size="desk"
+          icon={showExtra ? "up" : "down"}
           onPress={() => setShowExtra((v) => !v)}
         />
         {showExtra ? (
@@ -94,3 +98,8 @@ export function DetailsSection({ draft, errors, onChange }: DetailsSectionProps)
     </Card>
   );
 }
+
+const styles = StyleSheet.create({
+  // Separates the core fields above from the optional extra-details toggle below.
+  divider: { borderTopWidth: StyleSheet.hairlineWidth * 2, borderTopColor: palette.border },
+});
