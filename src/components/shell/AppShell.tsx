@@ -10,10 +10,12 @@ import { navFor, routes, type RouteKey } from "@/lib/routes";
 import { useBreakpoint } from "@/lib/responsive";
 import { palette, space } from "@/lib/theme";
 import { AppSkeleton, Banner, ServiceUnavailableScreen } from "@/components/feedback";
+import { HeaderExtraProvider } from "@/components/ui";
 import { useAlerts } from "@/features/alerts";
 import { useSession } from "@/features/auth";
 import { useOfflineSync } from "@/features/report";
 import { PhoneTabBar } from "./PhoneTabBar";
+import { ReportHeaderButton } from "./ReportHeaderButton";
 import { tabIcon, useRoleTabOptions } from "./useRoleTabs";
 
 const SESSION_WARNING_MS = 5 * 60_000;
@@ -138,6 +140,10 @@ export function AppShell() {
     return <Redirect href={`/login${query ? `?${query}` : ""}` as Href} />;
   }
 
+  // Managers get a Report button at the top right of every page header (not on the Report page).
+  const managerReport =
+    user.role === "MANAGER" && !pathname.startsWith("/report") ? <ReportHeaderButton /> : null;
+
   return (
     <View style={styles.root}>
       <View style={styles.banners}>
@@ -151,7 +157,9 @@ export function AppShell() {
           />
         ) : null}
       </View>
-      <RoleTabs user={user} />
+      <HeaderExtraProvider value={managerReport}>
+        <RoleTabs user={user} />
+      </HeaderExtraProvider>
     </View>
   );
 }

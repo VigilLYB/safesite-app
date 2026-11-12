@@ -1,24 +1,15 @@
-import { useMemo } from "react";
-import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import type { AnalyticsSummary } from "@/lib/api";
 import { formatCount, formatDate, formatDuration } from "@/lib/format";
 import { shiftLabel, STATUS_ORDER } from "@/lib/labels";
 import { severityTokens } from "@/lib/theme";
-import { Card, Screen, ScreenHeader, Stack, Text } from "@/components/ui";
+import { Card, Stack, Text } from "@/components/ui";
 import { statusLabel, SEVERITIES, severityLabel } from "@/components/domain";
 import { EmptyState, ErrorState, TileSkeleton } from "@/components/feedback";
 import { useAnalyticsSummary } from "../hooks/useAnalytics";
-import {
-  fillBuckets,
-  parseAnalyticsParams,
-  STATUS_TAB,
-  toAnalyticsFilters,
-  toUrl,
-  type AnalyticsState,
-} from "../lib/params";
-import { AnalyticsFilterBar } from "./AnalyticsFilterBar";
-import { AnalyticsTabs } from "./AnalyticsTabs";
+import { fillBuckets, STATUS_TAB } from "../lib/params";
 import { Breakdown } from "./Breakdown";
+import type { AnalyticsContentProps } from "./types";
 
 function Tiles({ data }: { data: AnalyticsSummary }) {
   const tiles = [
@@ -45,14 +36,9 @@ function Tiles({ data }: { data: AnalyticsSummary }) {
 }
 
 /** Analytics overview (guide §4.8): KPIs and breakdowns for the chosen range, shift and severity. */
-export function AnalyticsOverviewScreen() {
+export function OverviewContent({ state, filters }: AnalyticsContentProps) {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const state = useMemo(() => parseAnalyticsParams(params as never), [params]);
-  const filters = useMemo(() => toAnalyticsFilters(state), [state]);
   const query = useAnalyticsSummary(filters);
-  const update = (patch: Partial<AnalyticsState>) =>
-    router.setParams(toUrl({ ...state, ...patch }));
   const data = query.data;
 
   const statusRows = data
@@ -68,14 +54,7 @@ export function AnalyticsOverviewScreen() {
     : [];
 
   return (
-    <Screen
-      onRefresh={() => void query.refetch()}
-      refreshing={query.isRefetching}
-      testID="analytics-screen"
-    >
-      <ScreenHeader title="Analytics" subtitle="Reports and follow-through for the plant." />
-      <AnalyticsTabs current="overview" query={toUrl(state)} />
-      <AnalyticsFilterBar state={state} onChange={update} showBlueprint />
+    <Stack gap={4} testID="overview-content">
       {query.isPending ? <TileSkeleton tiles={7} /> : null}
       {query.isError && !data ? (
         <ErrorState error={query.error} onRetry={() => void query.refetch()} />
@@ -140,6 +119,6 @@ export function AnalyticsOverviewScreen() {
           </Card>
         </Stack>
       ) : null}
-    </Screen>
+    </Stack>
   );
 }

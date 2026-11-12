@@ -8,7 +8,10 @@ import { Icon, Text } from "@/components/ui";
 
 const INDICATOR_WIDTH = 28;
 const FAB_SIZE = 60;
-/** Which section is the primary action: it is drawn as a raised circle in the middle. */
+/**
+ * Report is drawn as a raised camera circle in the middle of the bar. Managers have no Report tab
+ * (theirs is a floating button), so their bar is five ordinary tabs.
+ */
 const PRIMARY_ROUTE = "report";
 /** The circle is narrow, so its caption is the short word. The full name stays as the accessibility label. */
 const PRIMARY_CAPTION = "Report";
@@ -91,7 +94,7 @@ export function PhoneTabBar({
             >
               {primary ? (
                 <View style={[styles.fab, focused && styles.fabOn]} testID="report-fab">
-                  <Icon name="plus" size={30} color={palette.onInk} />
+                  <Icon name="camera" size={28} color={palette.onInk} />
                 </View>
               ) : (
                 <View>

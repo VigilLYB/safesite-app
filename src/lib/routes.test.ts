@@ -63,12 +63,31 @@ describe("RBAC matrix (guide §3)", () => {
     for (const role of ROLES)
       for (const item of navFor(role)) expect(canAccess(role, item.key)).toBe(true);
   });
-  it("on a phone every role gets exactly five tabs with Report in the middle", () => {
-    for (const role of ROLES) {
-      const tabs = navFor(role, { compact: true }).map((n) => n.key);
-      expect(tabs).toEqual(["incidents", "actions", "report", "alerts", "account"]);
-      expect(tabs[Math.floor(tabs.length / 2)]).toBe("report");
+  it("on a phone every role gets exactly five tabs with the primary action in the middle", () => {
+    for (const role of ["WORKER", "SUPERVISOR"] as const) {
+      expect(navFor(role, { compact: true }).map((n) => n.key)).toEqual([
+        "incidents",
+        "actions",
+        "report",
+        "alerts",
+        "account",
+      ]);
     }
+    // Managers: Analytics in the middle; Report moves to a floating button, outside the bar.
+    expect(navFor("MANAGER", { compact: true }).map((n) => n.key)).toEqual([
+      "incidents",
+      "actions",
+      "analytics",
+      "alerts",
+      "account",
+    ]);
+    // Report stays reachable for managers: only the tab changed, not their access.
+    expect(canAccess("MANAGER", "report")).toBe(true);
+  });
+
+  it("the wide layout is unchanged for managers: Analytics and Report both in the sidebar", () => {
+    const keys = navFor("MANAGER").map((n) => n.key);
+    expect(keys).toEqual(expect.arrayContaining(["analytics", "report"]));
   });
   it("sends each role home", () => {
     expect(homeFor("WORKER")).toBe("/incidents");

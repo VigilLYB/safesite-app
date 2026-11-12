@@ -1,6 +1,17 @@
 import { within } from "@testing-library/react-native";
 import { createFakeBackend, type FakeBackend } from "../fake-backend";
-import { cleanup, fireEvent, launch, pathIs, press, waitFor, type View } from "../harness";
+import {
+  CAMERA_PATH,
+  PLUS_PATH,
+  cleanup,
+  fireEvent,
+  iconPaths,
+  launch,
+  pathIs,
+  press,
+  waitFor,
+  type View,
+} from "../harness";
 
 let be: FakeBackend;
 const W = "worker@plantx.demo";
@@ -43,19 +54,23 @@ const phone = (as: string, url = "/incidents") => launch(be, { as, url, phone: t
 const badge = (view: View) => view.queryByTestId("tab-badge");
 
 describe("Journey: five-tab phone bar with a raised Report button", () => {
-  it.each(["worker", "supervisor", "manager"])(
-    "%s sees My reports/Incidents, Actions, Report, Alerts, Account",
-    async (who) => {
-      const view = await phone(`${who}@plantx.demo`);
-      await view.findByTestId("incidents-screen");
-      for (const key of ["incidents", "actions", "report", "alerts", "account"]) {
-        expect(await view.findByTestId(`tab-${key}`)).toBeTruthy();
-      }
-      // Web-only sections are not in the phone bar.
-      for (const key of ["analytics", "team", "blueprints"])
-        expect(view.queryByTestId(`tab-${key}`)).toBeNull();
-    },
-  );
+  it.each([
+    ["worker", ["incidents", "actions", "report", "alerts", "account"]],
+    ["supervisor", ["incidents", "actions", "report", "alerts", "account"]],
+    // Managers get Analytics in the middle; their Report is a floating button instead.
+    ["manager", ["incidents", "actions", "analytics", "alerts", "account"]],
+  ])("%s sees the right five tabs", async (who, keys) => {
+    const view = await phone(`${who}@plantx.demo`);
+    await view.findByTestId("incidents-screen");
+    for (const key of keys) {
+      expect(await view.findByTestId(`tab-${key}`)).toBeTruthy();
+    }
+    for (const key of ["report", "analytics", "team", "blueprints"].filter(
+      (k) => !keys.includes(k),
+    )) {
+      expect(view.queryByTestId(`tab-${key}`)).toBeNull();
+    }
+  });
 
   it("Report is drawn as the raised circle in the middle and opens the report page", async () => {
     const view = await phone(W);
@@ -68,6 +83,10 @@ describe("Journey: five-tab phone bar with a raised Report button", () => {
     expect(present).toEqual(order);
     expect(view.getAllByTestId("report-fab")).toHaveLength(1); // only Report gets the circle
     // The caption under the circle is just "Report"; the full name stays for screen readers.
+    // The centre circle holds a camera, not a plus.
+    const drawn = iconPaths(view, "report-fab");
+    expect(drawn.some((d) => d.startsWith(CAMERA_PATH))).toBe(true);
+    expect(drawn).not.toContain(PLUS_PATH);
     const tab = view.getByTestId("tab-report");
     expect(within(tab).queryByText("Report a hazard")).toBeNull();
     // No "Report a hazard" button at the top of the page any more: the circle is the way in.

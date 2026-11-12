@@ -84,3 +84,25 @@ export async function tapMap(view: View, x: number, y: number, scale = 0.5) {
     nativeEvent: { locationX: x * scale, locationY: y * scale },
   });
 }
+
+interface JsonNode {
+  props?: Record<string, unknown>;
+  children?: (JsonNode | string)[] | null;
+}
+
+/** The SVG path strings drawn inside the element with this testID (icons are single paths). */
+export function iconPaths(view: View, testID: string): string[] {
+  const root = view.toJSON() as JsonNode | JsonNode[] | null;
+  const found: string[] = [];
+  const walk = (node: JsonNode | string, inside: boolean) => {
+    if (typeof node === "string") return;
+    const here = inside || node.props?.testID === testID;
+    if (here && typeof node.props?.d === "string") found.push(node.props.d);
+    for (const child of node.children ?? []) walk(child, here);
+  };
+  for (const node of Array.isArray(root) ? root : root ? [root] : []) walk(node, false);
+  return found;
+}
+
+export const CAMERA_PATH = "M4 8h3l2-3h6l2 3h3v11H4z";
+export const PLUS_PATH = "M12 5v14M5 12h14";

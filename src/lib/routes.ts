@@ -112,6 +112,14 @@ const NAV_ORDER: Record<Role, readonly RouteKey[]> = {
   ],
 };
 
+/**
+ * The manager's phone bar swaps Report for Analytics in the middle: managers live in the numbers.
+ * Report is still one tap away: a button at the top right of every manager page (ReportHeaderButton).
+ */
+const PHONE_NAV: Partial<Record<Role, readonly RouteKey[]>> = {
+  MANAGER: ["incidents", "actions", "analytics", "alerts", "account"],
+};
+
 export function canAccess(role: Role | null | undefined, key: RouteKey): boolean {
   if (!role) return false; // deny by default: unknown role, no access
   return routes[key].roles.includes(role);
@@ -123,8 +131,9 @@ export interface NavItem extends RouteDef {
 }
 
 export function navFor(role: Role, options: { compact?: boolean } = {}): NavItem[] {
-  return NAV_ORDER[role]
-    .filter((key) => !(options.compact && routes[key].webOnly))
+  const phone = options.compact ? PHONE_NAV[role] : undefined;
+  return (phone ?? NAV_ORDER[role])
+    .filter((key) => phone !== undefined || !(options.compact && routes[key].webOnly))
     .map((key) => {
       const def = routes[key];
       return {
