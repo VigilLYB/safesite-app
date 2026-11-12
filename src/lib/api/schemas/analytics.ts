@@ -52,3 +52,17 @@ export const analyticsSummarySchema = z.object({
   ),
 });
 export type AnalyticsSummary = z.infer<typeof analyticsSummarySchema>;
+
+export const analyticsTrendsSchema = z.object({
+  range: z.object({ from: z.string(), to: z.string() }),
+  bucket: z.enum(["week", "day"]),
+  points: z.array(
+    z.object({
+      period: z.string(),
+      category: z.string(),
+      severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
+      count: z.number(),
+    }),
+  ),
+});
+export type AnalyticsTrends = z.infer<typeof analyticsTrendsSchema>;

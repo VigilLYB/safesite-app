@@ -40,6 +40,7 @@ export const analyticsKeys = {
   all: ["analytics"] as const,
   summary: (filters: Query) => [...analyticsKeys.all, "summary", filters] as const,
   heatmap: (filters: Query) => [...analyticsKeys.all, "heatmap", filters] as const,
+  trends: (filters: Query) => [...analyticsKeys.all, "trends", filters] as const,
 };
 
 /** Drop undefined/null/empty values so equivalent filters share one cache key. */

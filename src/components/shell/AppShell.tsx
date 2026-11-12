@@ -11,6 +11,7 @@ import { useBreakpoint } from "@/lib/responsive";
 import { palette, space } from "@/lib/theme";
 import { AppSkeleton, Banner, ServiceUnavailableScreen } from "@/components/feedback";
 import { useSession } from "@/features/auth";
+import { useOfflineSync } from "@/features/report";
 import { PhoneTabBar } from "./PhoneTabBar";
 import { tabIcon, useRoleTabOptions } from "./useRoleTabs";
 
@@ -107,6 +108,7 @@ function RoleTabs({ role }: { role: Role }) {
 export function AppShell() {
   const { state, user, expiresAt, retryBoot } = useSession();
   const pathname = usePathname();
+  const offline = useOfflineSync();
 
   if (state.status === "loading") {
     return (
@@ -131,6 +133,13 @@ export function AppShell() {
       <View style={styles.banners}>
         <DemoModeBanner />
         <SessionEndingBanner expiresAt={expiresAt} />
+        {offline.pending > 0 ? (
+          <Banner
+            icon="warn"
+            message={`${offline.pending} report${offline.pending === 1 ? "" : "s"} saved on this device — sending when connected.`}
+            testID="offline-queue-banner"
+          />
+        ) : null}
       </View>
       <RoleTabs role={user.role} />
     </View>

@@ -1,6 +1,11 @@
 import { request, type Query } from "../client";
 import { endpoints } from "../registry";
-import { analyticsSummarySchema, heatmapSchema, type Severity } from "../schemas";
+import {
+  analyticsSummarySchema,
+  analyticsTrendsSchema,
+  heatmapSchema,
+  type Severity,
+} from "../schemas";
 
 export interface AnalyticsFilters extends Query {
   from?: string | undefined;
@@ -23,4 +28,6 @@ export const analyticsApi = {
     filters: AnalyticsFilters & { blueprintId: string; cellSize?: number | undefined },
     signal?: AbortSignal,
   ) => request({ endpoint: endpoints.heatmap, query: filters, schema: heatmapSchema, signal }),
+  trends: (filters: AnalyticsFilters & { bucket?: "week" | "day" }, signal?: AbortSignal) =>
+    request({ endpoint: endpoints.trends, query: filters, schema: analyticsTrendsSchema, signal }),
 };

@@ -9,6 +9,15 @@ export function useAnalyticsSummary(filters: AnalyticsFilters) {
   });
 }
 
+export function useTrends(filters: AnalyticsFilters, bucket: "week" | "day" = "week") {
+  const query = { ...filters, bucket };
+  return useQuery({
+    queryKey: analyticsKeys.trends(compact(query)),
+    queryFn: ({ signal }) => analyticsApi.trends(query, signal),
+    placeholderData: (previous) => previous,
+  });
+}
+
 export function useHeatmap(
   filters: AnalyticsFilters,
   blueprintId: string | undefined,

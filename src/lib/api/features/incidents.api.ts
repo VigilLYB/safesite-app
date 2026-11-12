@@ -1,4 +1,4 @@
-import { request, type Query } from "../client";
+import { request, requestText, type Query } from "../client";
 import { endpoints } from "../registry";
 import {
   incidentDuplicatesSchema,
@@ -141,4 +141,7 @@ export const incidentsApi = {
         signal,
       })
     ).items,
+  /** Full version history as CSV, with the tamper-evidence chain checked (manager only). */
+  auditExportCsv: (id: string, signal?: AbortSignal) =>
+    requestText({ endpoint: endpoints.incidentAuditExport, params: { id }, signal }),
 };

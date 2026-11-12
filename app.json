@@ -47,7 +47,8 @@
           "image": "./assets/splash-icon.png"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-sharing"
     ]
   }
 }

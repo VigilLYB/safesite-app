@@ -9,6 +9,7 @@ export {
 } from "./errors";
 export type { ApiErrorKind } from "./errors";
 export * from "./query-keys";
+export { requestText } from "./client";
 export type { Query } from "./client";
 export * from "./schemas";
 export { actionsApi, ACTIVE_ACTION_STATUSES } from "./features/actions.api";

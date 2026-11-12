@@ -155,13 +155,13 @@ export function ReportScreen() {
         subtitle="Photo, voice note or a few words. Everything is optional except one of them."
       />
       <CaptureSection photo={photo} voice={voice} />
-      <Section title="How serious is it?">
+      <Section title="How serious is it?" icon="warn">
         <SeverityPicker value={draft.severity} onChange={(severity) => patch({ severity })} />
         <Text variant="caption" tone="muted">
           If you are unsure, pick the higher level. A supervisor reviews every report.
         </Text>
       </Section>
-      <Section title="What happened">
+      <Section title="What happened" icon="clip">
         <DetailsSection draft={draft} errors={errors} onChange={patch} />
       </Section>
       <LocationSection gps={gps} pin={draft.pin} onPin={(pin) => patch({ pin })} />
@@ -172,6 +172,7 @@ export function ReportScreen() {
             label="Discard draft"
             variant="secondary"
             size="desk"
+            destructive
             onPress={startOver}
             testID="discard-confirm"
           />
@@ -187,6 +188,7 @@ export function ReportScreen() {
           label="Discard draft"
           variant="tertiary"
           size="desk"
+          destructive
           onPress={() => setConfirmDiscard(true)}
           testID="discard-draft"
         />

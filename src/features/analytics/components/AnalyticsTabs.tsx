@@ -1,12 +1,18 @@
 import { useRouter, type Href } from "expo-router";
 import { TabStrip } from "@/components/ui";
 
-/** Overview and Heatmap are two routes under /analytics that share one filter state in the URL. */
+const ROUTE: Record<string, string> = {
+  overview: "/analytics",
+  heatmap: "/analytics/heatmap",
+  trends: "/analytics/trends",
+};
+
+/** Overview, Heatmap and Trends are routes under /analytics that share one filter state in the URL. */
 export function AnalyticsTabs({
   current,
   query,
 }: {
-  current: "overview" | "heatmap";
+  current: "overview" | "heatmap" | "trends";
   query: Record<string, string | undefined>;
 }) {
   const router = useRouter();
@@ -20,13 +26,10 @@ export function AnalyticsTabs({
       tabs={[
         { value: "overview", label: "Overview" },
         { value: "heatmap", label: "Heatmap" },
+        { value: "trends", label: "Trends" },
       ]}
       value={current}
-      onChange={(tab) =>
-        router.replace(
-          `${tab === "overview" ? "/analytics" : "/analytics/heatmap"}${qs ? `?${qs}` : ""}` as Href,
-        )
-      }
+      onChange={(tab) => router.replace(`${ROUTE[tab]}${qs ? `?${qs}` : ""}` as Href)}
     />
   );
 }

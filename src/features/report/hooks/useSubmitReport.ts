@@ -1,8 +1,10 @@
 import { useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { analyticsKeys, incidentKeys, incidentsApi, uploadFile } from "@/lib/api";
+import { dequeueOfflineReport, enqueueOfflineReport } from "../lib/offline-queue";
 import {
   submitWithRecovery,
+  SavedOnDevice,
   type FileToSend,
   type SubmitDeps,
   type UploadedKey,
@@ -39,7 +41,15 @@ export function useSubmitReport(deps: SubmitDeps = realDeps) {
         deps,
         build: (keys) => buildSubmitBody({ ...input, ...keys }),
       }),
-    onSuccess: (result) => {
+    onError: (error, { input, photo, audio }) => {
+      // Give up only after the resend backoff is exhausted (SavedOnDevice): persist it so it
+      // survives the app closing, to be resent when a connection comes back (offline-sync.ts).
+      if (error instanceof SavedOnDevice) {
+        void enqueueOfflineReport({ id: input.clientSubmissionId, input, photo, audio });
+      }
+    },
+    onSuccess: (result, { input }) => {
+      void dequeueOfflineReport(input.clientSubmissionId);
       queryClient.setQueryData(incidentKeys.detail(result.incident.id), result.incident);
       void queryClient.invalidateQueries({ queryKey: incidentKeys.lists() });
       const parent = result.ai?.clusteredUnder?.incidentId;

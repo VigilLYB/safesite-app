@@ -122,3 +122,68 @@ export async function request<T>(options: RequestOptions<T>): Promise<T> {
   }
   return parsed.data;
 }
+
+/** Like `request`, but for a non-JSON file response (e.g. the CSV audit export): no body, raw text out. */
+export async function requestText(options: {
+  endpoint: Endpoint;
+  params?: PathParams | undefined;
+  query?: Query | undefined;
+  signal?: AbortSignal | undefined;
+  timeoutMs?: number | undefined;
+}): Promise<string> {
+  const { endpoint, params, query, signal } = options;
+  const url = `${config.API_BASE_URL}${buildPath(endpoint, params)}${toQueryString(query)}`;
+
+  const correlationId = newId();
+  const headers: Record<string, string> = { "X-Correlation-Id": correlationId };
+  const token = authBridge.getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(
+    () => {
+      timedOut = true;
+      controller.abort();
+    },
+    options.timeoutMs ?? endpoint.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+  );
+  const onAbort = () => controller.abort();
+  signal?.addEventListener("abort", onAbort);
+
+  let response: Response;
+  try {
+    response = await fetch(url, { method: endpoint.method, headers, signal: controller.signal });
+  } catch (cause) {
+    if (timedOut) {
+      throw new ApiError({
+        status: 0,
+        code: "TIMEOUT",
+        message: "Request timed out",
+        kind: "timeout",
+      });
+    }
+    if (signal?.aborted) throw cause;
+    throw new ApiError({
+      status: 0,
+      code: "NETWORK_ERROR",
+      message: "Network request failed",
+      kind: "network",
+    });
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", onAbort);
+  }
+
+  if (!response.ok) {
+    const payload = await readJson(response);
+    const error = toApiError(
+      response.status,
+      payload,
+      response.headers.get("x-correlation-id") ?? correlationId,
+    );
+    if (error.kind === "unauthorized") authBridge.notifyUnauthorized();
+    throw error;
+  }
+  return response.text();
+}

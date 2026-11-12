@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View, type ViewStyle } from "react-native";
 import { useFocusRing } from "@/lib/use-focus-ring";
-import { fonts, palette, radii, space, touch } from "@/lib/theme";
+import { fonts, palette, radii, severityTokens, space, touch } from "@/lib/theme";
 import { Icon, type IconName } from "../icons";
 import { Text } from "../Text";
 import { LoadingDots } from "./LoadingDots";
@@ -18,6 +18,8 @@ export interface ButtonProps {
   loading?: boolean | undefined;
   disabled?: boolean | undefined;
   fullWidth?: boolean | undefined;
+  /** Marks a destructive action: label/icon read in the CRITICAL colour. Fill is unaffected. */
+  destructive?: boolean | undefined;
   accessibilityHint?: string | undefined;
   testID?: string | undefined;
 }
@@ -38,12 +40,19 @@ export function Button({
   loading = false,
   disabled = false,
   fullWidth = false,
+  destructive = false,
   accessibilityHint,
   testID,
 }: ButtonProps) {
   const { handlers, ringStyle } = useFocusRing();
   const inactive = disabled || loading;
   const colors = BG[variant];
+  const labelColor =
+    disabled && !loading
+      ? palette.grey500
+      : destructive
+        ? severityTokens.CRITICAL.text
+        : colors.label;
 
   return (
     <Pressable
@@ -75,18 +84,25 @@ export function Button({
         {loading ? (
           <LoadingDots color={colors.label} />
         ) : icon ? (
-          <Icon
-            name={icon}
-            size={size === "worker" ? 20 : 18}
-            color={disabled ? palette.grey500 : colors.label}
-          />
+          <Icon name={icon} size={size === "worker" ? 20 : 18} color={labelColor} />
         ) : null}
-        <Text
-          variant={size === "worker" ? "bodyLg" : "label"}
-          style={[styles.label, { color: disabled && !loading ? palette.grey500 : colors.label }]}
-        >
-          {label}
-        </Text>
+        {variant === "tertiary" ? (
+          <View style={[styles.tertiaryUnderline, { borderBottomColor: labelColor }]}>
+            <Text
+              variant={size === "worker" ? "bodyLg" : "label"}
+              style={[styles.label, styles.tertiaryLabel, { color: labelColor }]}
+            >
+              {label}
+            </Text>
+          </View>
+        ) : (
+          <Text
+            variant={size === "worker" ? "bodyLg" : "label"}
+            style={[styles.label, { color: labelColor }]}
+          >
+            {label}
+          </Text>
+        )}
       </View>
     </Pressable>
   );
@@ -105,4 +121,8 @@ const styles = StyleSheet.create({
   content: { flexDirection: "row", alignItems: "center", gap: space[2] },
   outlined: { borderWidth: StyleSheet.hairlineWidth * 2, borderColor: palette.grey300 },
   label: { fontFamily: fonts.semibold },
+  // Tertiary has no fill or outline, so bold + a underline (drawn below, not text-decoration,
+  // so it can sit a couple of px clear of the descenders) is what marks it as actionable.
+  tertiaryLabel: { fontFamily: fonts.bold },
+  tertiaryUnderline: { paddingBottom: 3, borderBottomWidth: 1.5 },
 });
