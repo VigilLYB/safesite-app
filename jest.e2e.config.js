@@ -16,11 +16,21 @@ const expoPreset = require.resolve("babel-preset-expo", {
 process.env.EXPO_PUBLIC_API_BASE_URL =
   process.env.E2E_API_URL || "https://u16drhjo0a.execute-api.ap-south-1.amazonaws.com";
 process.env.EXPO_PUBLIC_APP_TIME_ZONE = "Asia/Kolkata";
+// One manifest per run: every entity the suites create is appended here, and the global teardown
+// deletes exactly those rows (E2E_DATABASE_URL required; see e2e/purge.js).
+process.env.E2E_MANIFEST ||= require("node:path").resolve(
+  ".e2e-runs",
+  `manifest-${process.pid}-${Date.now()}.jsonl`,
+);
 
-const common = { moduleNameMapper: base.moduleNameMapper, testTimeout: 90_000 };
+const common = { moduleNameMapper: base.moduleNameMapper };
 
 module.exports = {
   maxWorkers: 1,
+  globalSetup: "<rootDir>/e2e/global-setup.js",
+  globalTeardown: "<rootDir>/e2e/global-teardown.js",
+  // Global-only option: Jest ignores testTimeout inside `projects`, which left every live test at 5 s.
+  testTimeout: 90_000,
   projects: [
     {
       ...common,
@@ -44,6 +54,7 @@ module.exports = {
       testMatch: ["<rootDir>/e2e/**/*.e2e.tsx"],
       testPathIgnorePatterns: ["/node_modules/", "/.expo/"],
       setupFiles: ["<rootDir>/e2e/setup-ui-fetch.js"],
+      setupFilesAfterEnv: [...base.setupFilesAfterEnv, "<rootDir>/e2e/setup-ui-timeouts.js"],
     },
   ],
 };

@@ -1,5 +1,5 @@
 import { incidentsApi, type Incident } from "@/lib/api";
-import { as, describeLive, failure, report, RUN, uploadPhoto, words } from "./support";
+import { as, asRoot, describeLive, failure, report, RUN, uploadPhoto, words } from "./support";
 
 /** Pipeline: two similar reports -> auto-cluster -> thread rules -> unlink/relink -> similar. */
 describeLive("LIVE duplicates and similar reports", () => {
@@ -10,6 +10,7 @@ describeLive("LIVE duplicates and similar reports", () => {
   it("a similar report from another worker is nested under the parent", async () => {
     parent = (await report("worker", { category: `E2E ${RUN}`, description: `Leak near ${vocab}` }))
       .incident;
+    parent = await asRoot(parent); // the child must nest under this report, not an older one
     const result = await report("contractor", {
       category: `E2E ${RUN}`,
       description: `Leaking near ${vocab}`,
@@ -52,7 +53,9 @@ describeLive("LIVE duplicates and similar reports", () => {
     expect(relinked.cluster.parentIncidentId).toBe(parent.id);
     const p = await incidentsApi.get(parent.id);
     expect(p.permissions.canCluster).toBe(false);
-    const other = (await report("worker", { description: `Unrelated ${RUN} ${words()}` })).incident;
+    const other = await asRoot(
+      (await report("worker", { description: `Unrelated ${RUN} ${words()}` })).incident,
+    );
     await as("supervisor");
     const blocked = await failure(() =>
       incidentsApi.cluster(parent.id, { parentIncidentId: other.id, expectedVersion: p.version }),
@@ -95,7 +98,7 @@ describeLive("LIVE duplicates and similar reports", () => {
 
 describeLive("LIVE PPE scan", () => {
   it("scans a photo, lists the scan, and refuses a report without a photo", async () => {
-    const photoKey = await uploadPhoto();
+    const photoKey = await uploadPhoto("worker");
     const withPhoto = (await report("worker", { photoKey, description: `PPE ${RUN} ${words()}` }))
       .incident;
     expect(withPhoto.permissions.canRunPpeScan).toBe(true);

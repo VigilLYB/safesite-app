@@ -3,6 +3,7 @@ import {
   as,
   defaultBlueprint,
   describeLive,
+  track,
   failure,
   newSubmissionId,
   report,
@@ -21,7 +22,7 @@ describeLive("LIVE worker: report, edit, history", () => {
 
   it("one-tap report: photo + WAV voice note + GPS is saved, transcribed and auto-pinned", async () => {
     workerId = await as("worker");
-    const [photoKey, audioKey] = [await uploadPhoto(), await uploadAudio()];
+    const [photoKey, audioKey] = [await uploadPhoto("worker"), await uploadAudio("worker")];
     submissionId = newSubmissionId();
     const body = {
       clientSubmissionId: submissionId,
@@ -34,8 +35,10 @@ describeLive("LIVE worker: report, edit, history", () => {
     };
     const result = await incidentsApi.submit(body);
     incident = result.incident;
+    track(incident);
     expect(result.replayed).toBe(false);
-    expect(incident.version).toBe(1);
+    // v1, or v2 when the duplicate detector linked it under an existing open report.
+    expect(incident.version).toBe(result.ai?.clusteredUnder ? 2 : 1);
     expect(incident.status).toBe("OPEN");
     expect(incident.location.source).toBe("GPS_ESTIMATE");
     expect(incident.processing.transcription).toBe("COMPLETED"); // WAV accepted
@@ -89,6 +92,7 @@ describeLive("LIVE worker: report, edit, history", () => {
       description: `Broken audio ${RUN} ${words()}`,
       audioKey,
     });
+    track(bad);
     expect(bad.processing.transcription).toBe("FAILED");
     expect(bad.processing.error).toMatch(/Unsupported audio/);
   });
@@ -130,7 +134,7 @@ describeLive("LIVE worker: report, edit, history", () => {
       title: `Pump leak ${RUN}`,
       note: "worse than I thought",
     });
-    expect(edited.version).toBe(2);
+    expect(edited.version).toBe(incident.version + 1);
     expect(edited.severity).toBe("CRITICAL");
     incident = edited;
     const nothing = await failure(() =>

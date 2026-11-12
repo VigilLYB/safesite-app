@@ -1,16 +1,18 @@
 import { authApi, blueprintsApi, usersApi } from "@/lib/api";
-import { ADMIN_WRITES, as, describeLive, failure, RUN } from "./support";
+import { ADMIN_WRITES, as, describeLive, failure, RUN, trackBlueprint, trackUser } from "./support";
 
 /**
- * Create-only endpoints: the API has no delete, so every run leaves a user and a blueprint behind.
- * Opt in with E2E_ALLOW_ADMIN_WRITES=1.
+ * Create-only endpoints: the API has no delete. With E2E_DATABASE_URL set, the global teardown
+ * deletes the user and blueprint this creates; without it they would be permanent, so the suite
+ * then runs only when E2E_ALLOW_ADMIN_WRITES=1 says that's acceptable.
  */
-const gated = ADMIN_WRITES
-  ? describeLive
-  : (name: string, fn: () => void) => {
-      describe(`${name} (SKIPPED: set E2E_ALLOW_ADMIN_WRITES=1; these rows are permanent)`, () =>
-        it.skip("opt-in", fn));
-    };
+const gated =
+  ADMIN_WRITES || process.env.E2E_DATABASE_URL
+    ? describeLive
+    : (name: string, fn: () => void) => {
+        describe(`${name} (SKIPPED: set E2E_DATABASE_URL to purge, or E2E_ALLOW_ADMIN_WRITES=1 to keep the rows)`, () =>
+          it.skip("opt-in", fn));
+      };
 
 gated("LIVE manager administration", () => {
   const email = `e2e.${RUN}@plantx.demo`;
@@ -23,6 +25,7 @@ gated("LIVE manager administration", () => {
       role: "WORKER",
       password: "temporary-pass-123",
     });
+    trackUser(created);
     expect(created.email).toBe(email); // stored lowercase
     expect(created.isActive).toBe(true);
     expect(
@@ -66,6 +69,7 @@ gated("LIVE manager administration", () => {
       heightPx: 800,
       isDefault: false,
     });
+    trackBlueprint(bp);
     expect(bp.areas).toEqual([]);
     expect(
       (

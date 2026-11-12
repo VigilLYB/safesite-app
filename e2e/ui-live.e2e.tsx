@@ -7,7 +7,9 @@ import {
   signInThroughForm,
   waitFor,
 } from "../src/test/harness";
-import { describeLive, EMAILS, PASSWORD, RUN } from "./support";
+import * as SecureStore from "expo-secure-store";
+import { authApi, incidentsApi } from "@/lib/api";
+import { as, asRoot, describeLive, EMAILS, PASSWORD, report, RUN, track, words } from "./support";
 
 /** The real screens against the real API, signed in through the form like a person would. */
 describeLive("LIVE UI: real screens, real backend", () => {
@@ -50,11 +52,46 @@ describeLive("LIVE UI: real screens, real backend", () => {
     const view = await launch(null);
     await signInThroughForm(view, EMAILS.worker, PASSWORD as string);
     await pathIs(view, "/incidents");
-    await fireEvent.press(await view.findByLabelText("Report a hazard"));
+    await press(view, "report-hazard"); // the page button; the nav tab has the same label
     await fireEvent.changeText(await view.findByTestId("report-title"), `UI e2e ${RUN}`);
     await press(view, "report-submit");
     expect(await view.findByTestId("report-result", {}, { timeout: 40_000 })).toBeTruthy();
     await press(view, "report-done");
     expect(await view.findByText(`UI e2e ${RUN}`, {}, { timeout: 20_000 })).toBeTruthy();
+    // Still signed in as the worker: find the report the screen created so cleanup rejects it.
+    const mine = await incidentsApi.list({ limit: 25 });
+    const filed = mine.items.find((i) => i.title === `UI e2e ${RUN}`);
+    expect(filed).toBeDefined();
+    if (filed) track(filed);
+  });
+
+  it("a supervisor approves a worker's report from the detail screen; the server and timeline agree", async () => {
+    const { incident: filed } = await report("worker", {
+      description: `UI approve ${RUN} ${words()}`,
+    });
+    const incident = await asRoot(filed);
+    // Start the app already signed in as the supervisor, with a real session from the API.
+    const login = await authApi.login({ email: EMAILS.supervisor, password: PASSWORD as string });
+    await SecureStore.setItemAsync(
+      "safesite.session",
+      JSON.stringify({
+        accessToken: login.accessToken,
+        expiresAt: login.expiresAt,
+        user: login.user,
+      }),
+    );
+    const view = await launch(null, { url: `/incidents/${incident.id}` });
+    expect(view.queryByTestId("action-validate")).toBeNull(); // the app never offers Validate
+    await press(view, "action-approve");
+    await press(view, "note-confirm");
+    // The page moves to the new version: Approve disappears and Assign action appears.
+    await waitFor(() => expect(view.queryByTestId("action-approve")).toBeNull());
+    expect(await view.findByTestId("action-assign")).toBeTruthy();
+
+    await as("supervisor");
+    const fresh = await incidentsApi.get(incident.id);
+    expect(fresh.status).toBe("APPROVED");
+    const { nodes } = await incidentsApi.timeline(incident.id);
+    expect(nodes.at(-1)?.label).toBe("Supervisor Approved");
   });
 });

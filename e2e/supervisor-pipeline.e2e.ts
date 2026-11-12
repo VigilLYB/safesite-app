@@ -6,11 +6,13 @@ import {
   type Action,
   type Incident,
 } from "@/lib/api";
-import { as, describeLive, failure, report, RUN, words } from "./support";
+import { as, asRoot, describeLive, failure, report, RUN, words } from "./support";
 
 const fresh = async (): Promise<Incident> =>
-  (await report("worker", { severity: "HIGH", description: `Valve seep ${RUN} ${words()}` }))
-    .incident;
+  asRoot(
+    (await report("worker", { severity: "HIGH", description: `Valve seep ${RUN} ${words()}` }))
+      .incident,
+  );
 
 /** Pipeline: triage -> validate -> approve -> assign -> milestones in order -> resolved. */
 describeLive("LIVE supervisor: triage to resolved", () => {
