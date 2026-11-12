@@ -39,3 +39,47 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+---
+
+# SafeSite project rules
+
+Industrial hazard reporting for Plant X. Roles: **Worker** (phone, gloves, one hand), **Supervisor** and
+**Safety Manager** (tablet/desktop). One visual language, monochrome + severity colour only.
+API: see `docs/openapi.snapshot.json` (read-only reference; never call mutating endpoints against the shared backend to "test").
+
+## Before you change anything
+
+- State the target (file, screen, role) first. Look for an existing component or hook before writing one.
+- Find the cause before the fix. Stay in scope; report adjacent problems instead of fixing them.
+- Routes in `src/app/` are **thin**: they render one screen from `src/features/*`. No logic in route files.
+- Run `npm run check` (lint, format, types, tests) before saying "done". Say what you did not verify.
+
+## Structure
+
+```
+src/app/            thin routes, one group per role: (worker) (supervisor) (manager)
+src/features/<x>/   components/ hooks/ lib/ index.ts   (import a feature ONLY through its index.ts)
+src/components/ui   the only UI primitives; import from "@/components/ui", never a deep path
+src/components/domain   cross-feature domain atoms (SeverityBadge, StatusPill)
+src/components/feedback EmptyState, ErrorState, QueryBoundary, Skeleton, MutationError
+src/components/shell    RoleTabsLayout: one navigator shape for every role
+src/lib/api         client, registry (all endpoints), schemas (Zod), query-keys, *.api.ts
+src/lib/theme       tokens: the ONLY file with raw hex values
+src/lib/format      all date / number / unit formatting ("—" for unknown, never 0)
+src/lib/config      the ONLY reader of process.env (Zod-validated at startup)
+src/lib/clock.ts    the ONLY source of "now" (inject it; lint bans new Date() / Date.now())
+```
+
+## Non-negotiables (each has a lint rule or a test)
+
+- **Red is for CRITICAL only.** Severity is shape + label + pips, never colour alone (`tokens.test.ts`).
+- **No raw colours** in components; use `@/lib/theme`. **No `fetch`** outside `src/lib/api`.
+- **Every endpoint lives in `registry.ts`** and must exist in the OpenAPI snapshot (`registry.test.ts`).
+- **Validate every response with Zod.** A mismatch is `RESPONSE_INVALID`, never a guess.
+- **Idempotency:** create `clientSubmissionId` once per report (not per attempt). Mutations never auto-retry.
+- **Mutations send `expectedVersion`;** a `409 STALE_VERSION` reloads the report and asks the person to retry.
+- **Deny by default:** the server decides access (`incident.permissions`); the client only hides what the server says is not allowed.
+- Touch targets: 56pt for workers, 44pt minimum elsewhere. Visible focus. Reduced motion respected.
+- Server data lives in TanStack Query; UI state stays local. Query keys come from `query-keys.ts`.
+- A lint warning is information: restructure rather than disabling the rule.

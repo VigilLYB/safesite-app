@@ -1,17 +1,20 @@
 {
   "expo": {
-    "name": "safesite-app",
-    "slug": "safesite-app",
+    "name": "SafeSite",
+    "slug": "safesite",
+    "scheme": "safesite",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.plantx.safesite"
     },
     "android": {
+      "package": "com.plantx.safesite",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#16181D",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -20,6 +23,31 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "SafeSite records a voice note to describe a hazard."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "SafeSite takes a photo of the hazard you report."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F2F3F5",
+          "image": "./assets/splash-icon.png"
+        }
+      ],
+      "expo-asset"
+    ]
   }
 }

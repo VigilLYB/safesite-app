@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# env: never commit real values, but keep the template
+.env*
+!.env.example
+coverage/
