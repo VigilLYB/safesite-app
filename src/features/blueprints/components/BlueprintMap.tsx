@@ -1,8 +1,10 @@
 import { StyleSheet } from "react-native";
 import Svg, { Circle, G, Polygon, Polyline, Rect, Text as SvgText } from "react-native-svg";
 import { polygonCentroid, type Point } from "@/lib/geometry";
-import { fonts, heatRamp, palette } from "@/lib/theme";
+import { fonts, palette } from "@/lib/theme";
+import type { HeatMetric } from "../lib/heat";
 import { BlueprintCanvas, type CanvasBlueprint } from "./BlueprintCanvas";
+import { HeatLayer } from "./HeatLayer";
 
 export interface MapArea {
   id: string;
@@ -27,6 +29,7 @@ export interface HeatCell {
   centerX: number;
   centerY: number;
   count: number;
+  score: number;
   intensity: number;
 }
 
@@ -39,6 +42,10 @@ export interface BlueprintMapProps {
   draftPolygon?: readonly Point[] | undefined;
   cells?: readonly HeatCell[] | undefined;
   cellSize?: number | undefined;
+  /** What the heat is built from: report count, or the severity-weighted risk score. */
+  heatMetric?: HeatMetric | undefined;
+  /** Print the report count on each cell. */
+  showHeatCounts?: boolean | undefined;
   /** pick / drag / draw: a tap reports a clamped point. */
   onPick?: ((point: { x: number; y: number }) => void) | undefined;
   onImageError?: (() => void) | undefined;
@@ -48,11 +55,6 @@ export interface BlueprintMapProps {
    */
   showAreaLabels?: boolean | undefined;
 }
-
-/** Ramp bins from this one up are dark enough to need light count text. */
-const LIGHT_TEXT_FROM_BIN = 3;
-const binFor = (intensity: number): number =>
-  Math.min(heatRamp.length - 1, Math.floor(Math.min(Math.max(intensity, 0), 1) * heatRamp.length));
 
 const toPoints = (polygon: readonly Point[]) => polygon.map(([x, y]) => `${x},${y}`).join(" ");
 
@@ -103,6 +105,8 @@ export function BlueprintMap({
   draftPolygon,
   cells,
   cellSize = 50,
+  heatMetric = "score",
+  showHeatCounts,
   onPick,
   onImageError,
   showAreaLabels,
@@ -127,32 +131,16 @@ export function BlueprintMap({
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         >
-          {cells?.map((cell) => {
-            const bin = binFor(cell.intensity);
-            return (
-              <G key={`${cell.x}-${cell.y}`}>
-                <Rect
-                  x={cell.x}
-                  y={cell.y}
-                  width={cellSize}
-                  height={cellSize}
-                  rx={cellSize * 0.08}
-                  fill={heatRamp[bin] ?? heatRamp[0]}
-                  fillOpacity={0.85}
-                />
-                <SvgText
-                  x={cell.centerX}
-                  y={cell.centerY + cellSize * 0.13}
-                  fontSize={cellSize * 0.36}
-                  fontFamily={fonts.semibold}
-                  textAnchor="middle"
-                  fill={bin < LIGHT_TEXT_FROM_BIN ? palette.ink : palette.surface}
-                >
-                  {cell.count}
-                </SvgText>
-              </G>
-            );
-          })}
+          {cells && cells.length > 0 ? (
+            <HeatLayer
+              cells={cells}
+              cellSize={cellSize}
+              widthPx={blueprint.widthPx}
+              heightPx={blueprint.heightPx}
+              metric={heatMetric}
+              showCounts={Boolean(showHeatCounts)}
+            />
+          ) : null}
           {areas.map((area) => {
             const [cx, cy] = polygonCentroid(area.polygon);
             return (

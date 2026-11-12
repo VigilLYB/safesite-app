@@ -64,6 +64,21 @@ describe("Journey: manager analytics", () => {
     });
   });
 
+  it("draws a smooth heat layer with a colour-scale legend, and the metric can be switched", async () => {
+    be.seedIncident({ reporter: wid(), title: "Pinned" });
+    const view = await launch(be, { as: M, url: "/analytics/heatmap" });
+    await view.findByTestId("area-table");
+    await fireEvent(await view.findByTestId("blueprint-canvas"), "layout", {
+      nativeEvent: { layout: { width: 500, height: 400 } },
+    });
+    expect(await view.findByTestId("heat-layer")).toBeTruthy();
+    expect(await view.findByTestId("heat-legend")).toBeTruthy();
+    expect(await view.findByText("Highest risk")).toBeTruthy();
+    await fireEvent.press(await view.findByLabelText("Report count"));
+    expect(await view.findByText("Most reports")).toBeTruthy();
+    expect(view.getByTestId("heat-layer")).toBeTruthy();
+  });
+
   it("an invalid cell size is rejected client-side", async () => {
     const view = await launch(be, { as: M, url: "/analytics/heatmap" });
     await view.findByTestId("cell-size");
