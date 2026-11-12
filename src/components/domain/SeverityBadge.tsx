@@ -1,37 +1,40 @@
 import { StyleSheet, View } from "react-native";
-import { Text, SeverityShape } from "@/components/ui";
-import { palette, radii, severityTokens, space, type Severity } from "@/lib/theme";
+import { radii, severityTokens, space, type Severity } from "@/lib/theme";
 import { severityLabel, severityPips } from "./severity";
 
-const TOTAL_PIPS = 4;
+const COLUMNS = 4;
 
 export interface SeverityBadgeProps {
   severity: Severity;
+  /** Kept for call-site compatibility; the meter is the whole badge now. */
   showPips?: boolean | undefined;
+  size?: "sm" | "md" | undefined;
 }
 
-/** Shape + label + pips on a tinted pill. Red appears only on Critical. */
-export function SeverityBadge({ severity, showPips = true }: SeverityBadgeProps) {
+/**
+ * Severity as a 4-column "battery" meter on the severity tint: the number of filled columns and
+ * the tint say the level together, so it is never colour alone. Screen readers hear the word.
+ */
+export function SeverityBadge({ severity, size = "md" }: SeverityBadgeProps) {
   const tokens = severityTokens[severity];
-  const critical = severity === "CRITICAL";
   const filled = severityPips[severity];
+  const fillColor = tokens.glyph;
+  const column = size === "sm" ? styles.columnSm : styles.column;
   return (
     <View
       accessible
+      accessibilityRole="image"
       accessibilityLabel={`${severityLabel[severity]} severity`}
-      style={[styles.badge, critical && styles.critical, { backgroundColor: tokens.tint }]}
+      testID={`severity-meter-${severity}`}
+      style={[styles.badge, size === "sm" && styles.badgeSm, { backgroundColor: tokens.fill }]}
     >
-      <SeverityShape severity={severity} surface="badge" size={critical ? 22 : 18} />
-      <Text variant="label" style={styles.label}>
-        {severityLabel[severity]}
-      </Text>
-      {showPips ? (
-        <View style={styles.pips} importantForAccessibility="no-hide-descendants">
-          {Array.from({ length: TOTAL_PIPS }, (_, index) => (
-            <View key={index} style={[styles.pip, { opacity: index < filled ? 1 : 0.28 }]} />
-          ))}
-        </View>
-      ) : null}
+      {Array.from({ length: COLUMNS }, (_, index) => (
+        <View
+          key={index}
+          testID={index < filled ? "severity-column-on" : "severity-column-off"}
+          style={[column, { backgroundColor: fillColor, opacity: index < filled ? 1 : 0.25 }]}
+        />
+      ))}
     </View>
   );
 }
@@ -41,13 +44,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    gap: space[2],
-    minHeight: 32,
+    gap: 3,
+    height: 24,
     paddingHorizontal: space[2],
     borderRadius: radii.control,
   },
-  critical: { minHeight: 36 },
-  label: { fontWeight: "700" },
-  pips: { flexDirection: "row", gap: 3, marginLeft: 2 },
-  pip: { width: 6, height: 12, borderRadius: 1, backgroundColor: palette.ink },
+  badgeSm: { height: 20, paddingHorizontal: 6, gap: 2 },
+  column: { width: 5, height: 12, borderRadius: 1 },
+  columnSm: { width: 4, height: 10, borderRadius: 1 },
 });

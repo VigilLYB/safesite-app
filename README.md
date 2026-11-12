@@ -40,7 +40,7 @@ does not bundle them: `npx expo run:ios` or `npx expo run:android`.
 ## Checks and tests
 
 ```bash
-npm run check          # lint + format + typecheck + all offline tests (239)
+npm run check          # lint + format + typecheck + all offline tests
 npm run bundle:check   # Metro/Hermes bundle for iOS must build
 npm run test:e2e       # live suites against the hosted API (see below)
 ```
@@ -51,18 +51,36 @@ Test layers:
   builders, submit recovery (idempotent resend, re-upload), WAV/photo rules, error mapping.
 - **Journeys** (`src/test/journeys/*`): the real route tree rendered with Expo Router against an in-memory
   API (`src/test/fake-backend.ts`) that mirrors the backend rules the UI depends on. One file per role:
-  auth + RBAC + session, worker report, worker incidents/actions, supervisor, manager.
+  auth + RBAC + session, worker report, worker incidents/actions, supervisor, manager, and retrying a
+  failed transcription.
 - **Live** (`e2e/*.e2e.ts`): the app's own API modules against the hosted API, one pipeline per case
   (auth, worker report, supervisor triage-to-resolved, manager close/reopen/analytics, duplicates + PPE,
-  admin), plus `e2e/ui-live.e2e.tsx` (real screens, real backend).
+  lifecycle edges: transcription retry, a worker as the assignee, rejection seen by the reporter; admin),
+  plus `e2e/ui-live.e2e.tsx` (real screens, real backend: sign-in per role, report, validate).
+- **Live data hygiene:** the duplicate detector links a new report under any open report from the last
+  30 days, and the semantic model rates random test words as near-identical, so every live describe
+  block retires what it created when it ends (rejects open reports, finishes unfinished actions). Without
+  this, each run's leftovers made the next run's reports nest under them.
 
 ```bash
-E2E_PASSWORD='<seed password>' npm run test:e2e          # E2E_API_URL overrides the hosted URL
-E2E_ALLOW_ADMIN_WRITES=1 E2E_PASSWORD=... npm run test:e2e   # also creates a user + a blueprint
+# From CodeBase/backend, with an `aws login --profile safesite` session (root only can read the DB secret):
+eval "$(./scripts/remote-db-env.sh)"
+cd ../frontend
+E2E_DATABASE_URL="$DATABASE_URL" E2E_PASSWORD='<seed password>' npm run test:e2e
 ```
 
-Without `E2E_PASSWORD` the credential suites skip loudly and `e2e/public.e2e.ts` still runs. Live runs
-create reports (the API has no delete); admin writes are opt-in because users and blueprints are permanent.
+`E2E_API_URL` overrides the hosted URL. With `E2E_DATABASE_URL` set, the run **leaves the database exactly as
+it found it**: every suite appends what it creates (reports, users, blueprints) to a manifest in
+`.e2e-runs/`, and the Jest global teardown (`e2e/purge.js`) deletes exactly those rows in one transaction,
+including their versions, actions, milestones and PPE scans. Incident history is append-only, so the purge
+disables that trigger inside the transaction and re-enables it before commit. A report that a non-test
+report is linked under is kept and named. Without `E2E_DATABASE_URL` nothing is deleted, the manifest is
+kept, and `E2E_DATABASE_URL=… node e2e/purge.js <manifest>` removes it later. Uploaded media is not deleted
+(S3 expires it after 14 days).
+
+Without `E2E_PASSWORD` the credential suites skip loudly and `e2e/public.e2e.ts` still runs. The admin suite
+(creates a user and a blueprint) runs only with `E2E_DATABASE_URL` (purged afterwards) or
+`E2E_ALLOW_ADMIN_WRITES=1` (rows kept).
 
 CI runs `npm run check` on every PR and a weekly read-only comparison of the live OpenAPI document with
 `docs/openapi.snapshot.json`.
@@ -90,12 +108,15 @@ Validated at startup by `src/lib/config`; a bad value stops the app and names th
 
 ## Known gaps
 
-- **Android voice notes are switched off.** `expo-audio` cannot write WAV or OGG/Opus on Android; it needs a
-  native PCM recorder (e.g. `react-native-audio-record`) in a development build. iOS (linear PCM) and web
-  (Web Audio -> WAV) work.
+- **Android voice notes are switched off until the server accepts m4a.** `expo-audio` can only record AAC
+  (.m4a) on Android. The recorder is already set up for it (16 kHz mono AAC); flip `SERVER_ACCEPTS_M4A` in
+  `src/lib/audio-support.ts` once `POST /v1/uploads` accepts `audio/mp4` and the backend can transcribe it
+  (Transcribe Streaming can't read AAC). iOS (linear PCM WAV) and web (Web Audio -> WAV) work today.
+- **Workflow:** the app shows Approve as the single review step (it does not force an action); Validate
+  still exists in the API but is never offered. Assign action appears once a report is approved.
 - **No offline queue / persisted drafts.** The draft survives navigation but not an app restart; after two
   failed resends the report stays on screen as "Saved on this device" for a manual retry.
 - Upload progress is indeterminate (`fetch`, not XHR). The incident picker has no severity/area/date filters.
 - Not run on a device or simulator here: Jest, lint, types, and the iOS + web Metro bundles were.
-- The live credential suites were written from the backend source and its smoke test but have not been
-  executed (no seed password was available); only `e2e/public.e2e.ts` has run against the hosted API.
+- All live suites pass against the hosted API (87 tests including admin, 12 Nov 2026), and with the purge on
+  every table's row count matched before and after the run.

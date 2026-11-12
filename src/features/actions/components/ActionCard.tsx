@@ -1,7 +1,6 @@
 import type { Action } from "@/lib/api";
 import { actionStatusLabel, actionTypeLabel } from "@/lib/labels";
 import { displayTitle, formatDate } from "@/lib/format";
-import { severityTokens } from "@/lib/theme";
 import { Badge, Button, Card, Row, Text } from "@/components/ui";
 import { SeverityBadge, StatusPill } from "@/components/domain";
 
@@ -23,7 +22,6 @@ export function ActionCard({ action, onPress, onOpenIncident }: ActionCardProps)
   return (
     <Card
       onPress={() => onPress(action)}
-      edgeColor={severityTokens[action.incident.severity].fill}
       accessibilityLabel={`${action.title}. ${actionStatusLabel[action.status]}.${overdue ? " Overdue." : ""}`}
       testID={`action-${action.id}`}
     >
@@ -50,7 +48,7 @@ export function ActionCard({ action, onPress, onOpenIncident }: ActionCardProps)
         Due {formatDate(action.dueAt)} · Created {formatDate(action.createdAt)}
       </Text>
       <Row gap={2} wrap>
-        <SeverityBadge severity={action.incident.severity} showPips={false} />
+        <SeverityBadge severity={action.incident.severity} size="sm" />
         <StatusPill status={action.incident.status} />
         <Text variant="caption" tone="muted">
           {action.incident.areaName ?? "—"}

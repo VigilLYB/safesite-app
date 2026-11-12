@@ -62,32 +62,31 @@ describe("Journey: supervisor triage", () => {
   });
 });
 
-describe("Journey: supervisor validates, approves and rejects", () => {
-  it("validate then approve; the bar then offers only Reject and Assign action", async () => {
+describe("Journey: supervisor approves and rejects", () => {
+  it("an open report offers Approve, Edit and Reject (never Validate); approving unlocks Assign", async () => {
     const rec = be.seedIncident({ reporter: wid(), title: "Leak" });
     const view = await launch(be, { as: S, url: `/incidents/${rec.id}` });
-    await press(view, "action-validate");
-    await press(view, "note-confirm");
-    await waitFor(() => expect(rec.status).toBe("VALIDATED"));
-    expect(be.called("POST", "/transitions")[0]?.body).toEqual({
-      event: "validate",
-      expectedVersion: 1,
-    });
-    await waitFor(() => expect(view.queryByTestId("note-confirm")).toBeNull()); // dialog closed
-    await waitFor(() => expect(view.queryByTestId("action-validate")).toBeNull()); // UI shows v2
+    await view.findByTestId("action-approve");
+    await view.findByTestId("action-edit");
+    await view.findByTestId("action-reject");
+    expect(view.queryByTestId("action-validate")).toBeNull(); // the API offers it; the app doesn't
+    expect(view.queryByTestId("action-assign")).toBeNull(); // only after approval
+
     await press(view, "action-approve");
     await press(view, "note-confirm");
     await waitFor(() => expect(rec.status).toBe("APPROVED"));
-    expect(be.called("POST", "/transitions")[1]?.body).toEqual({
+    expect(be.called("POST", "/transitions")[0]?.body).toEqual({
       event: "approve",
-      expectedVersion: 2,
+      expectedVersion: 1,
     });
+    await waitFor(() => expect(view.queryByTestId("note-confirm")).toBeNull()); // dialog closed
     await view.findByTestId("action-assign");
-    await view.findByTestId("action-reject");
+    await view.findByTestId("action-reject"); // can still reject after approval
+    await view.findByTestId("action-edit");
     for (const id of ["action-validate", "action-approve", "action-close", "action-reopen"]) {
       await waitFor(() => expect(view.queryByTestId(id)).toBeNull());
     }
-    expect(labels(rec)).toEqual(expect.arrayContaining(["Validated", "Approved"]));
+    expect(labels(rec)).toEqual(expect.arrayContaining(["Approved"]));
   });
 
   it("reject needs a reason: Confirm is disabled until one is typed, and it is trimmed", async () => {
@@ -116,15 +115,12 @@ describe("Journey: supervisor validates, approves and rejects", () => {
     expect(view.queryByTestId("action-reopen")).toBeNull();
   });
 
-  it("explains why Assign is disabled before approval", async () => {
+  it("Assign action only appears once the report is approved", async () => {
     const rec = be.seedIncident({ reporter: wid(), title: "Leak" });
     const view = await launch(be, { as: S, url: `/incidents/${rec.id}` });
-    expect(await view.findByTestId("assign-reason")).toHaveTextContent?.(
-      "Approve the report first",
-    );
-    expect((await view.findByTestId("action-assign")).props.accessibilityState?.disabled).toBe(
-      true,
-    );
+    await view.findByTestId("action-approve");
+    expect(view.queryByTestId("action-assign")).toBeNull();
+    expect(view.queryByTestId("assign-reason")).toBeNull();
   });
 });
 
@@ -165,10 +161,10 @@ describe("Journey: stale version (optimistic concurrency)", () => {
   it("offers no retry when the change is no longer allowed", async () => {
     const rec = be.seedIncident({ reporter: wid(), title: "Leak" });
     const view = await launch(be, { as: S, url: `/incidents/${rec.id}` });
-    await view.findByTestId("action-validate");
+    await view.findByTestId("action-approve");
     be.touch(rec.id);
     rec.status = "APPROVED"; // someone approved it meanwhile
-    await press(view, "action-validate");
+    await press(view, "action-approve");
     await press(view, "note-confirm");
     await view.findByTestId("stale-message");
     await waitFor(() => expect(view.queryByTestId("stale-retry")).toBeNull());
@@ -271,13 +267,8 @@ describe("Journey: supervisor assigns a corrective action", () => {
     await press(view, "assign-next");
     await press(view, "assign-confirm");
     await waitFor(() => expect(rec.status).toBe("ACTION_ASSIGNED"));
-    await waitFor(() => expect(view.queryByTestId("action-assign")).not.toBeNull());
-    await waitFor(async () =>
-      expect((await view.findByTestId("action-assign")).props.accessibilityState?.disabled).toBe(
-        true,
-      ),
-    );
-    expect(await view.findByTestId("assign-reason")).toBeTruthy();
+    // An action is running: Assign is gone (not offered twice).
+    await waitFor(() => expect(view.queryByTestId("action-assign")).toBeNull());
   });
 });
 
@@ -309,8 +300,8 @@ describe("Journey: duplicates, similar reports and PPE", () => {
     const parent = be.seedIncident({ reporter: wid(), title: "Parent" });
     be.seedIncident({ reporter: wid(), title: "Kid", clusterParentId: parent.id });
     const view = await launch(be, { as: S, url: `/incidents/${parent.id}` });
-    expect((await view.findByTestId("action-link")).props.accessibilityState?.disabled).toBe(true);
     expect(await view.findByTestId("link-reason")).toBeTruthy();
+    expect(view.queryByTestId("action-link")).toBeNull(); // the reason, not a dead button
     expect(await view.findByTestId("has-duplicates-banner")).toBeTruthy();
   });
 

@@ -1,6 +1,6 @@
 import { useRouter, type Href } from "expo-router";
 import type { Incident } from "@/lib/api";
-import { displayTitle, formatDateTime, formatSimilarity, shortId } from "@/lib/format";
+import { formatDateTime, formatSimilarity, shortId } from "@/lib/format";
 import { canRetryTranscription } from "@/lib/permissions";
 import { Banner } from "@/components/feedback";
 import { Row, Stack, Text } from "@/components/ui";
@@ -30,17 +30,12 @@ export function IncidentHeader({
 
   return (
     <Stack gap={3}>
-      <Stack gap={1}>
-        <Text variant="mono" tone="muted">
-          {shortId(incident.id)}
-        </Text>
-        <Text variant="title" accessibilityRole="header" testID="incident-title">
-          {displayTitle(incident)}
-        </Text>
-      </Stack>
-      <Row gap={2} wrap>
+      <Row gap={2} wrap align="center">
         <StatusPill status={incident.status} />
         <SeverityBadge severity={incident.severity} />
+        <Text variant="mono" tone="muted">
+          #{shortId(incident.id)}
+        </Text>
       </Row>
       <Text variant="caption" tone="muted">
         Reported by {incident.reporter.fullName} · {formatDateTime(incident.createdAt)} · Last

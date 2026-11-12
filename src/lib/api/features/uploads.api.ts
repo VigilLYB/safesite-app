@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { ApiError } from "../errors";
 import { request } from "../client";
 import { endpoints } from "../registry";
@@ -5,6 +6,68 @@ import { validateUpload } from "../upload-rules";
 import { presignUploadResponseSchema, type UploadKind } from "../schemas";
 
 const UPLOAD_TIMEOUT_MS = 60_000;
+
+/** Bytes to send, and how to PUT them to a presigned URL. */
+interface UploadSource {
+  size: number;
+  /** Resolves with the HTTP status of the PUT. */
+  put: (url: string, method: string, headers: Record<string, string>) => Promise<number>;
+}
+
+const unreadable = () =>
+  new ApiError({
+    status: 0,
+    code: "FILE_UNREADABLE",
+    message: "Could not read the file",
+    kind: "unknown",
+  });
+
+/**
+ * On a device, a camera or recorder file is uploaded natively from its path. React Native's
+ * `fetch` with a Blob body does not send the bytes on Android (S3 stored a 14-byte placeholder
+ * instead of the photo), so device files never go through it.
+ */
+async function nativeFileSource(uri: string): Promise<UploadSource> {
+  const { File, UploadType } = await import("expo-file-system");
+  const file = new File(uri);
+  if (!file.exists) throw unreadable();
+  return {
+    size: file.size,
+    put: async (url, method, headers) => {
+      const result = await file.upload(url, {
+        httpMethod: method === "POST" || method === "PATCH" ? method : "PUT",
+        uploadType: UploadType.BINARY_CONTENT,
+        headers,
+      });
+      return result.status;
+    },
+  };
+}
+
+/** Web, data: URIs and in-memory blobs: a normal fetch PUT with the Blob body. */
+function blobSource(blob: Blob): UploadSource {
+  return {
+    size: blob.size,
+    put: async (url, method, headers) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+      try {
+        const response = await fetch(url, {
+          method,
+          headers,
+          body: blob,
+          signal: controller.signal,
+        });
+        return response.status;
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+  };
+}
+
+const isDeviceFile = (uri: string): boolean =>
+  Platform.OS !== "web" && /^(file|content):\/\//.test(uri);
 
 /**
  * Presign, then PUT the bytes straight to storage. Returns the storage key
@@ -17,22 +80,21 @@ export async function uploadFile(input: {
   kind: UploadKind;
   contentType: string;
 }): Promise<string> {
-  let blob: Blob;
+  let source: UploadSource;
   try {
-    blob = input.blob ?? (await (await fetch(input.uri as string)).blob());
-  } catch {
-    throw new ApiError({
-      status: 0,
-      code: "FILE_UNREADABLE",
-      message: "Could not read the file",
-      kind: "unknown",
-    });
+    if (input.blob) source = blobSource(input.blob);
+    else if (!input.uri) throw unreadable();
+    else if (isDeviceFile(input.uri)) source = await nativeFileSource(input.uri);
+    else source = blobSource(await (await fetch(input.uri)).blob());
+  } catch (cause) {
+    if (cause instanceof ApiError) throw cause;
+    throw unreadable();
   }
 
   const problem = validateUpload({
     kind: input.kind,
     contentType: input.contentType,
-    sizeBytes: blob.size,
+    sizeBytes: source.size,
   });
   if (problem) {
     throw new ApiError({
@@ -45,37 +107,28 @@ export async function uploadFile(input: {
 
   const presign = await request({
     endpoint: endpoints.presignUpload,
-    body: { kind: input.kind, contentType: input.contentType, sizeBytes: blob.size },
+    body: { kind: input.kind, contentType: input.contentType, sizeBytes: source.size },
     schema: presignUploadResponseSchema,
   });
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+  let status: number;
   try {
-    const response = await fetch(presign.uploadUrl, {
-      method: presign.method,
-      headers: presign.headers,
-      body: blob,
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      throw new ApiError({
-        status: response.status,
-        code: "UPLOAD_FAILED",
-        message: "The file could not be uploaded",
-        kind: "server",
-      });
-    }
-  } catch (cause) {
-    if (cause instanceof ApiError) throw cause;
+    status = await source.put(presign.uploadUrl, presign.method, presign.headers);
+  } catch {
     throw new ApiError({
       status: 0,
       code: "NETWORK_ERROR",
       message: "Upload failed",
       kind: "network",
     });
-  } finally {
-    clearTimeout(timer);
+  }
+  if (status < 200 || status >= 300) {
+    throw new ApiError({
+      status,
+      code: "UPLOAD_FAILED",
+      message: "The file could not be uploaded",
+      kind: "server",
+    });
   }
   return presign.key;
 }

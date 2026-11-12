@@ -23,7 +23,10 @@ export function Chip({ label, selected, onPress, testID }: ChipProps) {
       {...handlers}
       style={({ pressed }) => [
         styles.chip,
-        { backgroundColor: selected ? palette.ink : pressed ? palette.grey300 : palette.grey100 },
+        {
+          backgroundColor: selected ? palette.ink : pressed ? palette.grey100 : palette.surface,
+          borderColor: selected ? palette.ink : palette.grey300,
+        },
         ringStyle as ViewStyle,
       ]}
     >
@@ -36,9 +39,10 @@ export function Chip({ label, selected, onPress, testID }: ChipProps) {
 
 const styles = StyleSheet.create({
   chip: {
-    minHeight: touch.desk,
-    paddingHorizontal: space[4],
-    borderRadius: radii.control,
+    minHeight: touch.desk - 8,
+    paddingHorizontal: space[3],
+    borderRadius: radii.pill,
+    borderWidth: StyleSheet.hairlineWidth * 2,
     alignItems: "center",
     justifyContent: "center",
   },

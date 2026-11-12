@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import type { IncidentSummary } from "@/lib/api";
 import { displayTitle, formatRelative, shortId } from "@/lib/format";
-import { severityTokens, space } from "@/lib/theme";
+import { space } from "@/lib/theme";
 import { Badge, Button, Card, Row, Text } from "@/components/ui";
 import { SeverityBadge, StatusPill } from "@/components/domain";
 
@@ -25,7 +25,6 @@ export function IncidentCard({
   return (
     <Card
       onPress={() => onPress(incident)}
-      edgeColor={severityTokens[incident.severity].fill}
       accessibilityLabel={`${title}. ${incident.severity.toLowerCase()} severity. ${incident.status.toLowerCase().replace("_", " ")}.`}
       testID={`incident-${incident.id}`}
     >

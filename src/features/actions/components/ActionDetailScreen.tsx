@@ -98,7 +98,7 @@ export function ActionDetailScreen() {
           >
             <Text variant="label">Report: {displayTitle(action.incident)}</Text>
             <Row gap={2} wrap>
-              <SeverityBadge severity={action.incident.severity} showPips={false} />
+              <SeverityBadge severity={action.incident.severity} size="sm" />
               <StatusPill status={action.incident.status} />
               <Text variant="caption" tone="muted">
                 {action.incident.areaName ?? "—"}

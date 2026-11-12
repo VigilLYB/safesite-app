@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import Animated, { Easing, FadeIn, SlideInDown } from "react-native-reanimated";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBreakpoint } from "@/lib/responsive";
-import { palette, radii, space } from "@/lib/theme";
+import { motion, palette, radii, space } from "@/lib/theme";
 import { IconButton } from "../actions";
 import { Text } from "../Text";
 
@@ -13,26 +15,37 @@ export interface BottomSheetProps {
   children: ReactNode;
 }
 
-/** Modal sheet with a visible close control, a scrim dismiss and Android back support. */
+/**
+ * Modal sheet with a visible close control, a scrim dismiss and Android back support.
+ * The scrim fades while the panel rises (the whole modal no longer slides as one block).
+ */
 export function BottomSheet({ visible, title, onClose, children }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const { isTablet } = useBreakpoint();
+  const reduced = useReducedMotion();
+  const ease = Easing.out(Easing.cubic);
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
       statusBarTranslucent
     >
       <View style={styles.root}>
-        <Pressable
-          style={styles.scrim}
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-        />
-        <View
+        <Animated.View
+          style={StyleSheet.absoluteFill}
+          entering={FadeIn.duration(reduced ? 0 : motion.sheet)}
+        >
+          <Pressable
+            style={styles.scrim}
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          />
+        </Animated.View>
+        <Animated.View
+          entering={SlideInDown.duration(reduced ? 0 : motion.sheet).easing(ease)}
           accessibilityViewIsModal
           style={[
             styles.sheet,
@@ -49,7 +62,7 @@ export function BottomSheet({ visible, title, onClose, children }: BottomSheetPr
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.body}>
             {children}
           </ScrollView>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );

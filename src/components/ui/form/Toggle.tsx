@@ -28,7 +28,7 @@ export function Toggle({ label, value, onChange, helper, disabled = false, testI
       style={[styles.row, ringStyle as ViewStyle]}
     >
       <View style={[styles.box, value && styles.boxOn]}>
-        {value ? <Icon name="check" size={18} color={palette.onInk} /> : null}
+        {value ? <Icon name="check" size={14} color={palette.onInk} /> : null}
       </View>
       <View style={styles.text}>
         <Text variant="label">{label}</Text>
@@ -45,15 +45,15 @@ export function Toggle({ label, value, onChange, helper, disabled = false, testI
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: space[3], minHeight: touch.desk },
   box: {
-    width: 26,
-    height: 26,
+    width: 20,
+    height: 20,
     borderRadius: radii.control,
-    backgroundColor: palette.grey100,
-    borderBottomWidth: 3,
-    borderBottomColor: palette.fieldBar,
+    backgroundColor: palette.surface,
+    borderWidth: 1.5,
+    borderColor: palette.fieldBar,
     alignItems: "center",
     justifyContent: "center",
   },
-  boxOn: { backgroundColor: palette.ink, borderBottomColor: palette.ink },
+  boxOn: { backgroundColor: palette.ink, borderColor: palette.ink },
   text: { flex: 1, gap: 2 },
 });

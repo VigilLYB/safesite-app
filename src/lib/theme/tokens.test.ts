@@ -37,6 +37,7 @@ describe("design tokens", () => {
       hexes({ ...severityTokens[s] }),
     );
     const interface_ = [...hexes({ ...palette }), ...heatRamp];
+    // The heatmap ramp may carry hue (meaning), but never red.
     for (const colour of [...others, ...interface_]) expect(isRed(colour)).toBe(false);
     expect(isRed(severityTokens.CRITICAL.fill)).toBe(true);
     expect(isRed(severityTokens.CRITICAL.tint)).toBe(true);

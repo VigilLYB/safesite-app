@@ -5,6 +5,8 @@ const PATHS = {
   wifi: "M2 9a15 15 0 0120 0M5.5 12.5a10 10 0 0113 0M9 16a5 5 0 016 0M12 19.5h.01",
   home: "M3 11l9-8 9 8M5 10v10h14V10M10 20v-6h4v6",
   plus: "M12 5v14M5 12h14",
+  minus: "M5 12h14",
+  calendar: "M4 6h16v15H4zM4 10h16M9 3v5M15 3v5",
   list: "M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01",
   bell: "M6 17V11a6 6 0 0112 0v6l2 2H4zM10 21h4",
   camera: "M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 100-8 4 4 0 000 8z",

@@ -1,15 +1,15 @@
-import { useState } from "react";
 import type { Role, Severity } from "@/lib/api";
+import { clock } from "@/lib/clock";
 import { isStaff } from "@/lib/permissions";
-import { YMD } from "@/lib/plant-time";
+import { plantDay } from "@/lib/plant-time";
 import {
   Button,
   Card,
-  ChipGroup,
+  DateRangeField,
+  Row,
   SelectField,
   Stack,
   Text,
-  TextField,
   Toggle,
 } from "@/components/ui";
 import { useBlueprint, useBlueprints } from "@/features/blueprints";
@@ -32,38 +32,6 @@ export interface IncidentFilterPanelProps {
   onClear: () => void;
 }
 
-function DateField({
-  label,
-  value,
-  error,
-  onApply,
-  testID,
-}: {
-  label: string;
-  value: string | undefined;
-  error?: string | undefined;
-  onApply: (day: string | undefined) => void;
-  testID: string;
-}) {
-  const [text, setText] = useState(value ?? "");
-  const invalid = text !== "" && !YMD.test(text);
-  return (
-    <TextField
-      label={label}
-      value={text}
-      placeholder="YYYY-MM-DD"
-      error={invalid ? "Use the format YYYY-MM-DD." : error}
-      maxLength={10}
-      testID={testID}
-      onChangeText={(next) => {
-        setText(next);
-        if (next === "") onApply(undefined);
-        else if (YMD.test(next) && !Number.isNaN(Date.parse(next))) onApply(next);
-      }}
-    />
-  );
-}
-
 /** Severity and date range for everyone; reporter, place, duplicates and "mine" for staff. */
 export function IncidentFilterPanel({ role, state, onChange, onClear }: IncidentFilterPanelProps) {
   const staff = isStaff(role);
@@ -71,35 +39,31 @@ export function IncidentFilterPanel({ role, state, onChange, onClear }: Incident
   const planId =
     state.blueprintId ?? blueprints.data?.find((b) => b.isDefault)?.id ?? blueprints.data?.[0]?.id;
   const plan = useBlueprint(staff && state.areaId ? planId : state.blueprintId);
-  const rangeBackwards = Boolean(state.fromDay && state.toDay && state.fromDay > state.toDay);
 
   return (
     <Card tone="subtle">
       <Stack gap={4}>
-        <Stack gap={2}>
-          <Text variant="label">Severity</Text>
-          <ChipGroup
-            label="Severity"
-            options={SEVERITY_OPTIONS}
-            value={state.severity ?? ANY}
-            onChange={(value) =>
-              onChange({ severity: value === ANY ? undefined : (value as Severity) })
-            }
-          />
+        <SelectField
+          label="Severity"
+          value={state.severity ?? ANY}
+          options={SEVERITY_OPTIONS}
+          onChange={(value) =>
+            onChange({ severity: value === ANY ? undefined : (value as Severity) })
+          }
+          testID="filter-severity"
+        />
+        <Stack gap={1}>
+          <Text variant="label">Reported</Text>
+          <Row gap={2}>
+            <DateRangeField
+              label="Reported between"
+              value={{ fromDay: state.fromDay, toDay: state.toDay }}
+              today={plantDay(clock.now())}
+              onChange={(range) => onChange({ fromDay: range.fromDay, toDay: range.toDay })}
+              testID="filter-dates"
+            />
+          </Row>
         </Stack>
-        <DateField
-          label="From (plant time)"
-          value={state.fromDay}
-          onApply={(day) => onChange({ fromDay: day })}
-          testID="filter-from"
-        />
-        <DateField
-          label="To (plant time)"
-          value={state.toDay}
-          error={rangeBackwards ? "The start must be before the end." : undefined}
-          onApply={(day) => onChange({ toDay: day })}
-          testID="filter-to"
-        />
         {staff ? (
           <>
             <UserPicker
