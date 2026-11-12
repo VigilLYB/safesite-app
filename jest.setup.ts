@@ -1,11 +1,20 @@
+// Reanimated / Gesture Handler have no native side under Jest. Reanimated itself is mapped to
+// src/test/reanimated-mock.js in the Jest config (so expo-router's test mocks resolve to it too).
+import "react-native-gesture-handler/jestSetup";
+
 // The live suites (npm run test:e2e) point this at the hosted API; unit and journey tests never do.
 process.env.EXPO_PUBLIC_API_BASE_URL ||= "https://api.test.invalid";
 process.env.EXPO_PUBLIC_APP_TIME_ZONE = "Asia/Kolkata";
 
-// Reanimated / Gesture Handler have no native side under Jest. Reanimated itself is mapped to
-// src/test/reanimated-mock.js in the Jest config (so expo-router's test mocks resolve to it too).
-jest.mock("react-native-worklets", () => require("react-native-worklets/lib/module/mock"));
-require("react-native-gesture-handler/jestSetup");
+jest.mock("react-native-worklets", () =>
+  jest.requireActual("react-native-worklets/lib/module/mock"),
+);
+
+// NetInfo has no native module under Jest (the offline report queue listens to it). The library's
+// own mock reports online and reachable.
+jest.mock("@react-native-community/netinfo", () =>
+  jest.requireActual("@react-native-community/netinfo/jest/netinfo-mock.js"),
+);
 
 jest.mock(
   "react-native-safe-area-context",
