@@ -60,18 +60,7 @@ export function IncidentsScreen() {
       refreshing={query.isRefetching && !query.isFetchingNextPage}
       testID="incidents-screen"
     >
-      <ScreenHeader
-        title={staff ? "Incidents" : "My reports"}
-        actions={
-          <Button
-            label="Report a hazard"
-            icon="plus"
-            size="desk"
-            onPress={() => router.push("/report" as Href)}
-            testID="report-hazard"
-          />
-        }
-      />
+      <ScreenHeader title={staff ? "Incidents" : "My reports"} />
       <TabStrip
         label="Report status"
         tabs={tabsFor(role).map((t) => ({ value: t.value, label: t.label }))}

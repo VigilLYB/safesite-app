@@ -5,6 +5,7 @@ import * as SecureStore from "expo-secure-store";
 import { authBridge } from "@/lib/api";
 import { setClock, systemClock } from "@/lib/clock";
 import { draftStore } from "@/features/report";
+import { runSignOutCleanups } from "@/lib/session-hooks";
 import { queryClient } from "@/providers";
 import { PASSWORD, type FakeBackend } from "./fake-backend";
 
@@ -44,6 +45,15 @@ export async function cleanup() {
   draftStore.reset();
   setClock(systemClock);
   await SecureStore.deleteItemAsync("safesite.session");
+  // Read-state for alerts is per user and persisted: never let one test's "seen" leak into the next.
+  await act(async () => {
+    runSignOutCleanups();
+  });
+  for (let n = 1; n <= 4; n++) {
+    await SecureStore.deleteItemAsync(
+      `safesite.alerts.seen.00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+    );
+  }
 }
 
 export async function press(view: View, testID: string) {

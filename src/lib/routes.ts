@@ -6,7 +6,7 @@ import type { Role } from "@/lib/api";
  * role's navigation looks like. The server still enforces every rule; this decides what to show.
  */
 export type RouteKey =
-  "report" | "incidents" | "actions" | "analytics" | "team" | "blueprints" | "account";
+  "report" | "incidents" | "actions" | "alerts" | "analytics" | "team" | "blueprints" | "account";
 
 export interface RouteDef {
   key: RouteKey;
@@ -48,6 +48,14 @@ export const routes: Record<RouteKey, RouteDef> = {
     icon: "tasks",
     roles: ALL,
   },
+  alerts: {
+    key: "alerts",
+    segment: "alerts",
+    path: "/alerts",
+    label: "Alerts",
+    icon: "bell",
+    roles: ALL,
+  },
   analytics: {
     key: "analytics",
     segment: "analytics",
@@ -85,11 +93,23 @@ export const routes: Record<RouteKey, RouteDef> = {
   },
 };
 
-/** Navigation order per role (guide §3.2). */
+/**
+ * Navigation order per role (guide §3.2). On a phone the web-only sections drop out, which leaves
+ * five tabs for every role with Report in the middle: the one action everyone takes.
+ */
 const NAV_ORDER: Record<Role, readonly RouteKey[]> = {
-  WORKER: ["incidents", "report", "actions", "account"],
-  SUPERVISOR: ["incidents", "report", "actions", "analytics", "team", "account"],
-  MANAGER: ["analytics", "incidents", "actions", "report", "team", "blueprints", "account"],
+  WORKER: ["incidents", "actions", "report", "alerts", "account"],
+  SUPERVISOR: ["incidents", "actions", "report", "alerts", "analytics", "team", "account"],
+  MANAGER: [
+    "analytics",
+    "incidents",
+    "actions",
+    "report",
+    "alerts",
+    "team",
+    "blueprints",
+    "account",
+  ],
 };
 
 export function canAccess(role: Role | null | undefined, key: RouteKey): boolean {

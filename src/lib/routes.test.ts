@@ -17,6 +17,7 @@ describe("RBAC matrix (guide §3)", () => {
     report: ROLES,
     incidents: ROLES,
     actions: ROLES,
+    alerts: ROLES,
     account: ROLES,
     analytics: ["SUPERVISOR", "MANAGER"],
     team: ["SUPERVISOR", "MANAGER"],
@@ -35,14 +36,16 @@ describe("RBAC matrix (guide §3)", () => {
   it("lists only routes the role can open, in the documented order", () => {
     expect(navFor("WORKER").map((n) => n.navLabel)).toEqual([
       "My reports",
-      "Report a hazard",
       "Actions",
+      "Report a hazard",
+      "Alerts",
       "Account",
     ]);
     expect(navFor("SUPERVISOR").map((n) => n.key)).toEqual([
       "incidents",
-      "report",
       "actions",
+      "report",
+      "alerts",
       "analytics",
       "team",
       "account",
@@ -52,6 +55,7 @@ describe("RBAC matrix (guide §3)", () => {
       "incidents",
       "actions",
       "report",
+      "alerts",
       "team",
       "blueprints",
       "account",
@@ -59,13 +63,12 @@ describe("RBAC matrix (guide §3)", () => {
     for (const role of ROLES)
       for (const item of navFor(role)) expect(canAccess(role, item.key)).toBe(true);
   });
-  it("hides web-only sections on phones", () => {
-    expect(navFor("MANAGER", { compact: true }).map((n) => n.key)).toEqual([
-      "incidents",
-      "actions",
-      "report",
-      "account",
-    ]);
+  it("on a phone every role gets exactly five tabs with Report in the middle", () => {
+    for (const role of ROLES) {
+      const tabs = navFor(role, { compact: true }).map((n) => n.key);
+      expect(tabs).toEqual(["incidents", "actions", "report", "alerts", "account"]);
+      expect(tabs[Math.floor(tabs.length / 2)]).toBe("report");
+    }
   });
   it("sends each role home", () => {
     expect(homeFor("WORKER")).toBe("/incidents");
