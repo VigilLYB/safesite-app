@@ -4,7 +4,6 @@ import {
   actionListSchema,
   actionSchema,
   actionTemplateListSchema,
-  type ActionStatus,
   type ActionType,
 } from "../schemas";
 
@@ -28,8 +27,6 @@ export interface AssignActionInput {
   dueAt?: string | null | undefined;
   milestones?: { title: string; dueAt?: string | null | undefined }[] | undefined;
 }
-
-export const ACTIVE_ACTION_STATUSES: readonly ActionStatus[] = ["OPEN", "IN_PROGRESS"];
 
 export const actionsApi = {
   templates: async (signal?: AbortSignal) =>

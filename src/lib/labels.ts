@@ -1,16 +1,6 @@
 import type { ActionStatus, ActionType, IncidentStatus, Role } from "@/lib/api";
 
 /** Label tables from guide §2.7. Labels the API supplies (timeline `label`) are never rebuilt here. */
-export const statusMeaning: Record<IncidentStatus, string> = {
-  OPEN: "Waiting for a supervisor",
-  VALIDATED: "Checked by a supervisor, waiting for approval",
-  APPROVED: "Needs a corrective action",
-  ACTION_ASSIGNED: "Corrective action in progress",
-  RESOLVED: "Action done, waiting for a manager to close",
-  CLOSED: "Finished",
-  REJECTED: "Dismissed, with a recorded reason",
-};
-
 export const STATUS_ORDER: readonly IncidentStatus[] = [
   "OPEN",
   "VALIDATED",

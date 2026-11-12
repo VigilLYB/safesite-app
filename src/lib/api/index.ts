@@ -1,18 +1,11 @@
 export { authBridge } from "./auth-bridge";
-export {
-  ApiError,
-  fieldErrors,
-  isApiError,
-  isStaleVersion,
-  isThrottled,
-  userMessage,
-} from "./errors";
+export { ApiError, fieldErrors, isApiError, isStaleVersion, userMessage } from "./errors";
 export type { ApiErrorKind } from "./errors";
 export * from "./query-keys";
 export { requestText } from "./client";
 export type { Query } from "./client";
 export * from "./schemas";
-export { actionsApi, ACTIVE_ACTION_STATUSES } from "./features/actions.api";
+export { actionsApi } from "./features/actions.api";
 export type { ActionFilters, AssignActionInput } from "./features/actions.api";
 export { analyticsApi } from "./features/analytics.api";
 export type { AnalyticsFilters } from "./features/analytics.api";

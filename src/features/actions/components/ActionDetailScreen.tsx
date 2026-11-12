@@ -9,7 +9,7 @@ import {
   Badge,
   Button,
   Card,
-  KeyValue,
+  KeyValueGrid,
   Row,
   Screen,
   ScreenHeader,
@@ -83,14 +83,17 @@ export function ActionDetailScreen() {
             ) : null}
           </Row>
           {action.description ? <Text>{action.description}</Text> : null}
-          <Row gap={5} wrap>
-            <KeyValue label="Assignee" value={action.assignee?.fullName ?? "Unassigned"} />
-            <KeyValue label="Assigned by" value={action.assignedBy.fullName} />
-            <KeyValue label="Due" value={formatDate(action.dueAt)} />
-            <KeyValue label="Created" value={formatDateTime(action.createdAt)} />
-            <KeyValue label="Completed" value={formatDateTime(action.completedAt)} />
-            <KeyValue label="Progress" value={progressLabel(action)} />
-          </Row>
+          <KeyValueGrid
+            testID="action-facts"
+            items={[
+              { label: "Assignee", value: action.assignee?.fullName ?? "Unassigned" },
+              { label: "Assigned by", value: action.assignedBy.fullName },
+              { label: "Due", value: formatDate(action.dueAt) },
+              { label: "Progress", value: progressLabel(action) },
+              { label: "Created", value: formatDateTime(action.createdAt) },
+              { label: "Completed", value: formatDateTime(action.completedAt) },
+            ]}
+          />
           <Card
             onPress={() => router.push(`/incidents/${action.incident.id}` as Href)}
             accessibilityLabel="Open the report"

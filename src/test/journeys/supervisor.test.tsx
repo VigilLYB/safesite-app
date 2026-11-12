@@ -273,7 +273,7 @@ describe("Journey: supervisor assigns a corrective action", () => {
 });
 
 describe("Journey: duplicates, similar reports and PPE", () => {
-  it("links a report under a parent, then unlinks it from the parent's Duplicates tab", async () => {
+  it("links a report under a parent, then unlinks it from the parent's linked-reports thread", async () => {
     const parent = be.seedIncident({ reporter: wid(), title: "Original leak" });
     const child = be.seedIncident({ reporter: wid(), title: "Same leak again" });
     const view = await launch(be, { as: S, url: `/incidents/${child.id}` });
@@ -288,7 +288,7 @@ describe("Journey: duplicates, similar reports and PPE", () => {
     expect(await view.findByTestId("duplicate-banner")).toBeTruthy();
     await cleanup();
 
-    const parentView = await launch(be, { as: S, url: `/incidents/${parent.id}?tab=duplicates` });
+    const parentView = await launch(be, { as: S, url: `/incidents/${parent.id}` });
     await press(parentView, `unlink-${child.id}`);
     await waitFor(() => expect(child.clusterParentId).toBeNull());
     expect(be.called("DELETE", "/cluster")[0]?.body).toEqual({
@@ -302,7 +302,7 @@ describe("Journey: duplicates, similar reports and PPE", () => {
     const view = await launch(be, { as: S, url: `/incidents/${parent.id}` });
     expect(await view.findByTestId("link-reason")).toBeTruthy();
     expect(view.queryByTestId("action-link")).toBeNull(); // the reason, not a dead button
-    expect(await view.findByTestId("has-duplicates-banner")).toBeTruthy();
+    expect(await view.findByTestId("linked-reports")).toBeTruthy();
   });
 
   it("Similar shows AI scores as whole percentages", async () => {

@@ -1,7 +1,6 @@
 /** Guide §2.6: PPE scanning needs 64–4096 px per side; uploads are JPEG or PNG up to 10 MB. */
 export const PHOTO_MIN_SIDE = 64;
 export const PHOTO_MAX_SIDE = 4096;
-export const PHOTO_MAX_BYTES = 10 * 1024 * 1024;
 
 export type PhotoPlan =
   | { ok: false; reason: string }

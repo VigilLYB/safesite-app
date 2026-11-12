@@ -1,7 +1,6 @@
 /** Voice notes are 16 kHz mono 16-bit PCM WAV, 60 s at most (guide §2.6). */
 export const VOICE_RATE = 16_000;
 export const VOICE_MAX_SECONDS = 60;
-export const VOICE_MAX_BYTES = 4 * 1024 * 1024;
 
 /** Average-downsample mono samples from `fromRate` to `toRate`. */
 export function downsample(samples: Float32Array, fromRate: number, toRate: number): Float32Array {

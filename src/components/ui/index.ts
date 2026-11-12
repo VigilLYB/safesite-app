@@ -4,7 +4,6 @@ export * from "./form";
 export * from "./icons";
 export * from "./navigation";
 export * from "./overlay";
-export { MasterDetail } from "./layout/MasterDetail";
 export { Screen } from "./layout/Screen";
 export type { ScreenProps } from "./layout/Screen";
 export { ScreenHeader } from "./layout/ScreenHeader";
