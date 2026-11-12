@@ -9,6 +9,9 @@ export const roleLabel: Record<Role, string> = {
 export const isStaff = (role: Role | null | undefined): boolean =>
   role === "SUPERVISOR" || role === "MANAGER";
 
+/** Audit export is a safety-manager capability, not a supervisor one (guide §4.9). */
+export const canExportAudit = (role: Role | null | undefined): boolean => role === "MANAGER";
+
 /**
  * The few rules the server does not hand us as flags (guide §4.7): an action can be progressed
  * while it is OPEN or IN_PROGRESS, by staff or by its assignee. The server enforces it again.

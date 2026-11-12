@@ -36,6 +36,7 @@ export const endpoints = {
   incidentUncluster: e("DELETE", "/v1/incidents/{id}/cluster"),
   incidentSimilar: e("GET", "/v1/incidents/{id}/similar"),
   incidentDuplicates: e("GET", "/v1/incidents/{id}/duplicates"),
+  incidentAuditExport: e("GET", "/v1/incidents/{id}/audit-export"),
   actionTemplates: e("GET", "/v1/action-templates"),
   actionAssign: e("POST", "/v1/incidents/{id}/actions"),
   actions: e("GET", "/v1/actions"),
