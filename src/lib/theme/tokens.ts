@@ -82,10 +82,19 @@ export const severityTokens: Record<Severity, SeverityTokens> = {
 };
 
 /**
- * Heatmap ramp: warm, single-hue family (amber to brown) whose luminance falls strictly, so it still
- * reads in greyscale and for colour-blind viewers. No red: red stays exclusive to Critical.
+ * Heatmap ramp: pale cream through yellow, amber and orange, then rose and purple, ending in deep
+ * purple. Luminance falls strictly, so it still reads in greyscale and for colour-blind viewers.
+ * No stop is red: red stays exclusive to Critical.
  */
-export const heatRamp = ["#FFF4CC", "#FFD966", "#F6A93B", "#E07B24", "#A84A12", "#5C2408"] as const;
+export const heatRamp = [
+  "#FFF4CC",
+  "#FFD966",
+  "#F6A93B",
+  "#E07B24",
+  "#B8446E",
+  "#6B2A86",
+  "#3B0F70",
+] as const;
 
 export const radii = { control: 4, card: 6, sheet: 10, pill: 999 } as const;
 

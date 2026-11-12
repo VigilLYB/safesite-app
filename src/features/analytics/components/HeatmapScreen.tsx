@@ -14,9 +14,16 @@ import {
   Stack,
   Text,
   TextField,
+  Toggle,
 } from "@/components/ui";
 import { EmptyState, ErrorState, MapSkeleton } from "@/components/feedback";
-import { BlueprintMap, useBlueprint, useBlueprints } from "@/features/blueprints";
+import {
+  BlueprintMap,
+  HeatLegend,
+  useBlueprint,
+  useBlueprints,
+  type HeatMetric,
+} from "@/features/blueprints";
 import { useHeatmap } from "../hooks/useAnalytics";
 import {
   clampCell,
@@ -43,6 +50,8 @@ export function HeatmapScreen() {
   const [selected, setSelected] = useState<string | null>(null);
   const [cellText, setCellText] = useState(String(state.cellSize));
   const [debounced, setDebounced] = useState(state.cellSize);
+  const [metric, setMetric] = useState<HeatMetric>("score");
+  const [showCounts, setShowCounts] = useState(false);
 
   // Debounce cell-size changes by 300 ms (guide §4.9).
   useEffect(() => {
@@ -104,6 +113,24 @@ export function HeatmapScreen() {
           testID="cell-size"
         />
       </Stack>
+      <Stack gap={2}>
+        <Text variant="label">Heat shows</Text>
+        <ChipGroup
+          label="Heat shows"
+          options={[
+            { value: "score", label: "Risk score" },
+            { value: "count", label: "Report count" },
+          ]}
+          value={metric}
+          onChange={setMetric}
+        />
+        <Toggle
+          label="Show numbers on the map"
+          value={showCounts}
+          onChange={setShowCounts}
+          testID="heat-numbers"
+        />
+      </Stack>
       <AnalyticsFilterBar state={state} onChange={update} />
 
       {list.isError ? <ErrorState error={list.error} onRetry={() => void list.refetch()} /> : null}
@@ -123,14 +150,21 @@ export function HeatmapScreen() {
             areas={plan.data.areas.map((a) => ({ ...a, highlighted: a.id === selected }))}
             cells={heat.data.cells}
             cellSize={heat.data.cellSize}
+            heatMetric={metric}
+            showHeatCounts={showCounts}
             onImageError={() => void plan.refetch()}
           />
           {heat.data.cells.length === 0 ? (
             <EmptyState icon="map" title="No pinned reports in this period" />
           ) : null}
+          <HeatLegend
+            lowLabel="Few reports"
+            highLabel={metric === "score" ? "Highest risk" : "Most reports"}
+          />
           <Text variant="caption" tone="muted" testID="legend">
-            Weights: Low {severityWeight.LOW}, Medium {severityWeight.MEDIUM}, High{" "}
-            {severityWeight.HIGH}, Critical {severityWeight.CRITICAL}. Darker cells have more risk.
+            Reports that are close together add up, so crowded spots get darker. Risk weights: Low{" "}
+            {severityWeight.LOW}, Medium {severityWeight.MEDIUM}, High {severityWeight.HIGH},
+            Critical {severityWeight.CRITICAL}.
           </Text>
           <Text variant="caption" tone="muted">
             {formatCount(heat.data.totals.reports)} pinned reports on this blueprint. Reports
