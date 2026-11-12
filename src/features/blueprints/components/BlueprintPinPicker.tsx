@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { isApiError, type BlueprintDetail } from "@/lib/api";
 import { Button, SelectField, Stack, Text } from "@/components/ui";
-import { EmptyState, ErrorState, ListSkeleton, MapSkeleton } from "@/components/feedback";
+import { Banner, EmptyState, ErrorState, ListSkeleton, MapSkeleton } from "@/components/feedback";
 import { useBlueprint, useBlueprints } from "../hooks/useBlueprints";
+import { cacheBlueprint, getCachedBlueprint } from "../lib/blueprint-cache";
 import { BlueprintMap } from "./BlueprintMap";
+
+const isOffline = (error: unknown) => isApiError(error) && error.kind === "network";
 
 export interface Pin {
   blueprintId: string;
@@ -18,7 +22,11 @@ export interface BlueprintPinPickerProps {
   label?: string | undefined;
 }
 
-/** Pick mode: tap the floor plan to mark the spot. A blueprint selector appears when there are several. */
+/**
+ * Pick mode: tap the floor plan to mark the spot. A blueprint selector appears when there are
+ * several. With no signal, falls back to the one floor plan saved on this device (one plant, one
+ * map - see lib/blueprint-cache.ts) so a worker can still drop a pin offline.
+ */
 export function BlueprintPinPicker({
   value,
   onChange,
@@ -34,16 +42,41 @@ export function BlueprintPinPicker({
     chosen ?? items?.find((item) => item.isDefault)?.id ?? items?.[0]?.id ?? undefined;
   const detail = useBlueprint(blueprintId);
 
-  if (list.isPending) return <ListSkeleton rows={1} />;
-  if (list.isError) return <ErrorState error={list.error} onRetry={() => void list.refetch()} />;
-  if (!items || items.length === 0) {
+  const [cached, setCached] = useState<BlueprintDetail | null>(null);
+  const [cacheChecked, setCacheChecked] = useState(false);
+  useEffect(() => {
+    void getCachedBlueprint().then((found) => {
+      setCached(found);
+      setCacheChecked(true);
+    });
+  }, []);
+  useEffect(() => {
+    if (detail.data) void cacheBlueprint(detail.data);
+  }, [detail.data]);
+
+  const usingCache =
+    cacheChecked && Boolean(cached) && (isOffline(list.error) || isOffline(detail.error));
+  const plan = usingCache ? cached : (detail.data ?? null);
+
+  if (list.isPending || !cacheChecked) return <ListSkeleton rows={1} />;
+  if (list.isError && !usingCache) {
+    return <ErrorState error={list.error} onRetry={() => void list.refetch()} />;
+  }
+  if (!usingCache && (!items || items.length === 0)) {
     return <EmptyState icon="map" title="No floor plan yet" message="Ask a manager to add one." />;
   }
 
   return (
     <Stack gap={3}>
       <Text variant="label">{label}</Text>
-      {items.length > 1 ? (
+      {usingCache ? (
+        <Banner
+          icon="warn"
+          message="Offline — showing the floor plan last saved on this device."
+          testID="blueprint-offline-banner"
+        />
+      ) : null}
+      {!usingCache && items && items.length > 1 ? (
         <SelectField
           label="Floor plan"
           value={blueprintId ?? null}
@@ -54,21 +87,19 @@ export function BlueprintPinPicker({
           }}
         />
       ) : null}
-      {detail.isPending ? <MapSkeleton /> : null}
-      {detail.isError ? (
+      {!usingCache && detail.isPending ? <MapSkeleton /> : null}
+      {!usingCache && detail.isError ? (
         <ErrorState error={detail.error} onRetry={() => void detail.refetch()} />
       ) : null}
-      {detail.data ? (
+      {plan ? (
         <BlueprintMap
-          blueprint={detail.data}
-          accessibilityLabel={`Floor plan of ${detail.data.name}`}
-          areas={detail.data.areas}
+          blueprint={plan}
+          accessibilityLabel={`Floor plan of ${plan.name}`}
+          areas={plan.areas}
           pins={
-            value && value.blueprintId === detail.data.id
-              ? [{ id: "pin", ...value, draft: true }]
-              : []
+            value && value.blueprintId === plan.id ? [{ id: "pin", ...value, draft: true }] : []
           }
-          onPick={({ x, y }) => onChange({ blueprintId: detail.data.id, x, y })}
+          onPick={({ x, y }) => onChange({ blueprintId: plan.id, x, y })}
           onImageError={() => void detail.refetch()}
         />
       ) : null}

@@ -43,6 +43,15 @@ jest.mock("expo-secure-store", () => {
   };
 });
 
+// Not an expo-* package, so jest-expo's auto-mocks don't cover it; no native side under Jest.
+jest.mock("@react-native-community/netinfo", () => ({
+  __esModule: true,
+  default: {
+    addEventListener: jest.fn(() => () => {}),
+    fetch: jest.fn().mockResolvedValue({ isConnected: true, isInternetReachable: true }),
+  },
+}));
+
 jest.mock("expo-location", () => ({
   Accuracy: { High: 4 },
   requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ granted: true }),
