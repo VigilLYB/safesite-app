@@ -46,6 +46,7 @@ export const endpoints = {
   ppeScans: e("GET", "/v1/incidents/{id}/ppe-scans"),
   heatmap: e("GET", "/v1/analytics/heatmap"),
   summary: e("GET", "/v1/analytics/summary"),
+  trends: e("GET", "/v1/analytics/trends"),
 } as const satisfies Record<string, Endpoint>;
 
 export type PathParams = Record<string, string | number>;
