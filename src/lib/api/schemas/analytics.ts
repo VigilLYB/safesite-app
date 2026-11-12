@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-const bucket = z.object({ key: z.string(), count: z.number(), score: z.number() });
+/** byStatus / bySeverity carry only a count; byShift / topAreas add a severity-weighted score. */
+const countBucket = z.object({ key: z.string(), count: z.number() });
+const scoredBucket = countBucket.extend({ score: z.number() });
 
 export const heatmapSchema = z.object({
   blueprint: z.object({ id: z.string(), widthPx: z.number(), heightPx: z.number() }),
@@ -28,10 +30,10 @@ export const analyticsSummarySchema = z.object({
   range: z.object({ from: z.string(), to: z.string() }),
   timezone: z.string(),
   totals: z.object({ reports: z.number(), duplicates: z.number(), open: z.number() }),
-  byStatus: z.array(bucket),
-  bySeverity: z.array(bucket),
-  byShift: z.array(bucket.extend({ name: z.string() })),
-  topAreas: z.array(bucket),
+  byStatus: z.array(countBucket),
+  bySeverity: z.array(countBucket),
+  byShift: z.array(scoredBucket.extend({ name: z.string() })),
+  topAreas: z.array(scoredBucket),
   actions: z.object({
     total: z.number(),
     active: z.number(),

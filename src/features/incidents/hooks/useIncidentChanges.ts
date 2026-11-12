@@ -44,6 +44,8 @@ export function useIncidentChanges(incident: Incident) {
   const assign = useAssignAction();
   const [assignedId, setAssignedId] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  // Its own slot: the shared `error` is only rendered inside dialogs and the Location tab.
+  const [transcriptionError, setTranscriptionError] = useState<unknown>(null);
   const [stale, setStale] = useState<StaleChange | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -137,15 +139,18 @@ export function useIncidentChanges(incident: Incident) {
     assignedActionId: assignedId,
     clearAssigned: () => setAssignedId(null),
     retryTranscription: async (): Promise<Outcome> => {
-      setError(null);
+      setTranscriptionError(null);
       try {
         await retryTx.mutateAsync(incident.id);
         return "ok";
       } catch (caught) {
-        setError(caught);
+        setTranscriptionError(caught);
+        // The server records the new failure reason on the report: show it in the banner.
+        void queryClient.invalidateQueries({ queryKey: incidentKeys.detail(incident.id) });
         return "error";
       }
     },
+    transcriptionError,
     retryingTranscription: retryTx.isPending,
   };
 }
