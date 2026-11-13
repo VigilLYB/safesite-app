@@ -1,6 +1,12 @@
-import { useState } from "react";
-import { StyleSheet, TextInput, View, type TextInputProps } from "react-native";
-import { useFocusRing } from "@/lib/use-focus-ring";
+import { useState, type ReactNode } from "react";
+import {
+  Platform,
+  StyleSheet,
+  TextInput,
+  View,
+  type TextInputProps,
+  type TextStyle,
+} from "react-native";
 import { fonts, palette, radii, space, touch, typeScale } from "@/lib/theme";
 import { Icon } from "../icons";
 import { Text } from "../Text";
@@ -25,6 +31,8 @@ export interface TextFieldProps extends Pick<
   helper?: string | undefined;
   error?: string | undefined;
   required?: boolean | undefined;
+  /** A control inside the box at its right edge (e.g. a calendar button). */
+  trailing?: ReactNode;
   testID?: string | undefined;
 }
 
@@ -38,11 +46,11 @@ export function TextField({
   error,
   required,
   multiline,
+  trailing,
   testID,
   ...input
 }: TextFieldProps) {
   const [focused, setFocused] = useState(false);
-  const { handlers, ringStyle } = useFocusRing();
   const borderColor = error ? palette.ink : focused ? palette.ink : palette.grey300;
 
   return (
@@ -51,7 +59,14 @@ export function TextField({
         {label}
         {required ? " *" : ""}
       </Text>
-      <View style={[styles.box, { borderColor }, (focused || error) && styles.boxStrong]}>
+      <View
+        style={[
+          styles.box,
+          { borderColor },
+          (focused || error) && styles.boxStrong,
+          trailing ? styles.boxRow : null,
+        ]}
+      >
         <TextInput
           {...input}
           multiline={multiline}
@@ -60,16 +75,16 @@ export function TextField({
           accessibilityHint={helper}
           aria-invalid={Boolean(error)}
           placeholderTextColor={palette.grey500}
-          onFocus={() => {
-            setFocused(true);
-            handlers.onFocus();
-          }}
-          onBlur={() => {
-            setFocused(false);
-            handlers.onBlur();
-          }}
-          style={[styles.input, multiline && styles.multiline, ringStyle]}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={[
+            styles.input,
+            multiline && styles.multiline,
+            trailing ? styles.flex : null,
+            Platform.OS === "web" && NO_OUTLINE,
+          ]}
         />
+        {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
       </View>
       {error ? (
         <View
@@ -92,6 +107,12 @@ export function TextField({
   );
 }
 
+/**
+ * The box's darker, thicker border is the focus indicator, so the browser's own focus outline
+ * (`outline-style: auto`, which ignores a zero width) is turned off on web.
+ */
+const NO_OUTLINE = { outlineStyle: "none", outlineWidth: 0 } as unknown as TextStyle;
+
 const styles = StyleSheet.create({
   field: { gap: space[1] },
   box: {
@@ -102,6 +123,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   boxStrong: { borderWidth: 1.5 },
+  boxRow: { flexDirection: "row", alignItems: "center" },
+  trailing: { paddingRight: space[1] },
   input: {
     ...typeScale.body,
     fontFamily: fonts.medium,

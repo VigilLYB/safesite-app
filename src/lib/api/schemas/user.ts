@@ -19,4 +19,10 @@ export const loginResponseSchema = z.object({
 });
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
 
-export const usersListSchema = z.object({ items: z.array(userSchema) });
+/** A row of GET /v1/users: the user plus how many live actions they hold. */
+export const userListItemSchema = userSchema.extend({
+  openActionCount: z.number().int().optional(),
+});
+export type UserListItem = z.infer<typeof userListItemSchema>;
+
+export const usersListSchema = z.object({ items: z.array(userListItemSchema) });

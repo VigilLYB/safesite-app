@@ -7,13 +7,13 @@ import { useIncidentTimeline, usePpeScans } from "../../hooks/useIncidents";
 
 export interface PpeTabProps {
   incident: Incident;
-  onRun: () => void;
   running: boolean;
   error: unknown;
+  onRetry: () => void;
 }
 
 /** Newest first: verdict, people, per-person equipment, which version and photo were scanned. */
-export function PpeTab({ incident, onRun, running, error }: PpeTabProps) {
+export function PpeTab({ incident, running, error, onRetry }: PpeTabProps) {
   const query = usePpeScans(incident.id, true);
   const timeline = useIncidentTimeline(incident.id);
   const versionNumber = (versionId: string) =>
@@ -21,26 +21,33 @@ export function PpeTab({ incident, onRun, running, error }: PpeTabProps) {
 
   return (
     <Stack gap={3} testID="tab-ppe">
-      {incident.permissions.canRunPpeScan ? (
-        <Button
-          label="Run PPE scan"
-          icon="shield"
-          size="desk"
-          loading={running}
-          onPress={onRun}
-          testID="ppe-run"
-        />
-      ) : null}
       {running ? (
-        <Text variant="caption" tone="muted">
-          Scanning photo…
+        <Text variant="caption" tone="muted" testID="ppe-running">
+          Checking the photo for PPE…
         </Text>
       ) : null}
       <MutationError error={error} />
+      {error && !running && incident.permissions.canRunPpeScan ? (
+        <Button
+          label="Try the PPE check again"
+          variant="secondary"
+          size="desk"
+          icon="shield"
+          onPress={onRetry}
+          testID="ppe-retry"
+        />
+      ) : null}
       <QueryBoundary
         query={query}
         isEmpty={(items) => items.length === 0}
-        empty={<EmptyState icon="shield" title="No PPE scans yet" />}
+        empty={
+          running ? null : (
+            <EmptyState
+              icon="shield"
+              title={incident.photo ? "No PPE check yet" : "No photo to check for PPE"}
+            />
+          )
+        }
       >
         {(scans) => (
           <Stack gap={3}>

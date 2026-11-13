@@ -37,6 +37,8 @@ export const actionSchema = z.object({
   completedAt: z.string().nullable(),
   progress: z.object({ done: z.number().int(), total: z.number().int() }),
   milestones: z.array(milestoneSchema).optional(),
+  /** When the current assignee was set (creation or latest reassignment). */
+  assignedAt: z.string().optional(),
   createdAt: z.string(),
 });
 export type Action = z.infer<typeof actionSchema>;

@@ -10,6 +10,10 @@ export interface SelectOption<T extends string> {
   value: T;
   label: string;
   description?: string | undefined;
+  /** A number shown at the right of the option (e.g. open tasks). */
+  count?: number | undefined;
+  /** Spoken with the count, e.g. "open actions". */
+  countLabel?: string | undefined;
 }
 
 export interface SelectFieldProps<T extends string> {
@@ -84,6 +88,11 @@ export function SelectField<T extends string>({
               key={option.value}
               accessibilityRole="radio"
               accessibilityState={{ checked: isSelected }}
+              accessibilityLabel={
+                option.count !== undefined
+                  ? `${option.label}, ${option.count} ${option.countLabel ?? ""}`.trim()
+                  : undefined
+              }
               onPress={() => {
                 onChange(option.value);
                 setOpen(false);
@@ -104,6 +113,11 @@ export function SelectField<T extends string>({
                   </Text>
                 ) : null}
               </View>
+              {option.count !== undefined ? (
+                <View style={styles.count}>
+                  <Text variant="label">{option.count}</Text>
+                </View>
+              ) : null}
             </Pressable>
           );
         })}
@@ -135,6 +149,14 @@ const styles = StyleSheet.create({
     borderRadius: radii.control,
   },
   optionSelected: { backgroundColor: palette.grey50 },
+  count: {
+    minWidth: 32,
+    paddingHorizontal: space[2],
+    paddingVertical: 2,
+    borderRadius: radii.pill,
+    backgroundColor: palette.grey100,
+    alignItems: "center",
+  },
   radio: {
     width: 18,
     height: 18,

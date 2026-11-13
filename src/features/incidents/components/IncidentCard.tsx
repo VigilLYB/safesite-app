@@ -14,7 +14,7 @@ export interface IncidentCardProps {
 
 /**
  * One report in a list. Top: reference, severity (right). Then title and place. Bottom: status,
- * duplicate / "+N linked" badges, time (right).
+ * duplicate / "+N linked" / high-confidence "PPE missing" badges, time (right).
  */
 export function IncidentCard({
   incident,
@@ -27,7 +27,7 @@ export function IncidentCard({
   return (
     <Card
       onPress={() => onPress(incident)}
-      accessibilityLabel={`${title}. ${incident.severity.toLowerCase()} severity. ${incident.status.toLowerCase().replace("_", " ")}.${linked > 0 ? ` ${linked} linked report${linked === 1 ? "" : "s"}.` : ""}`}
+      accessibilityLabel={`${title}. ${incident.severity.toLowerCase()} severity. ${incident.status.toLowerCase().replace("_", " ")}.${linked > 0 ? ` ${linked} linked report${linked === 1 ? "" : "s"}.` : ""}${incident.ppeViolation ? " PPE missing." : ""}`}
       testID={`incident-${incident.id}`}
     >
       <Row justify="space-between" gap={2}>
@@ -48,6 +48,10 @@ export function IncidentCard({
           <StatusPill status={incident.status} />
           {incident.clusterParentId ? <Badge label="Duplicate" icon="link" /> : null}
           {linked > 0 ? <Badge label={`+${linked}`} icon="link" /> : null}
+          {/* Only a very confident AI result; anything weaker stays on the report's PPE tab. */}
+          {incident.ppeViolation ? (
+            <Badge label="PPE missing" icon="shield" tone="inverse" />
+          ) : null}
         </Row>
         <Text variant="caption" tone="muted">
           {formatRelative(incident.createdAt)}

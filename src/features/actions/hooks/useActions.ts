@@ -5,6 +5,7 @@ import {
   analyticsKeys,
   compact,
   incidentKeys,
+  userKeys,
   type Action,
   type ActionFilters,
   type AssignActionInput,
@@ -54,6 +55,7 @@ export function useAssignAction() {
       void queryClient.invalidateQueries({ queryKey: incidentKeys.detail(variables.incidentId) });
       void queryClient.invalidateQueries({ queryKey: incidentKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: actionKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: userKeys.all }); // open-action counts
     },
     onError: (error, variables) => {
       // 409 (already has an active action) and 422 (no longer APPROVED): the report moved on.
@@ -74,6 +76,7 @@ function useProgress<V>(mutationFn: (variables: V) => Promise<Action>) {
       void queryClient.invalidateQueries({ queryKey: incidentKeys.detail(action.incident.id) });
       void queryClient.invalidateQueries({ queryKey: incidentKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: analyticsKeys.all });
+      void queryClient.invalidateQueries({ queryKey: userKeys.all }); // open-action counts
     },
     onError: (_error, _v) => {
       // 403/422: the action moved on. Refetch so the buttons match the server.

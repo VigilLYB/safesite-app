@@ -1,5 +1,8 @@
+import { useEffect } from "react";
+import { StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { isApiError } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { incidentKeys, incidentsApi, isApiError } from "@/lib/api";
 import { displayTitle, formatDateTime } from "@/lib/format";
 import { isStaff } from "@/lib/permissions";
 import { actorRoleLabel } from "@/lib/labels";
@@ -26,9 +29,26 @@ export function IncidentVersionScreen() {
 
   const current = `/incidents/${incidentId}` as Href;
   const nodes = timeline.data?.nodes ?? [];
-  const node = nodes.find((n) => n.version === version);
   const last = nodes[nodes.length - 1]?.version;
-  const go = (n: number) => router.replace(`/incidents/${incidentId}/versions/${n}` as Href);
+  const queryClient = useQueryClient();
+  // Same screen, new param: only the panel under the title changes; nothing remounts.
+  const go = (n: number) => {
+    if (n !== version) router.setParams({ version: String(n) });
+  };
+  const switching = snapshot.isPlaceholderData;
+
+  // Warm the neighbours so Previous / Next switch instantly.
+  useEffect(() => {
+    if (!valid || version === null) return;
+    for (const n of [version - 1, version + 1]) {
+      if (n < 1 || (last !== undefined && n > last)) continue;
+      void queryClient.prefetchQuery({
+        queryKey: incidentKeys.version(incidentId, n),
+        queryFn: ({ signal }) => incidentsApi.version(incidentId, n, signal),
+        staleTime: 50 * 60_000,
+      });
+    }
+  }, [queryClient, incidentId, valid, version, last]);
 
   const missing =
     snapshot.isError &&
@@ -52,7 +72,7 @@ export function IncidentVersionScreen() {
         ]}
       />
       {!valid ? <RecordNotFound what="version" /> : null}
-      {valid && snapshot.isPending ? <DetailSkeleton lines={4} /> : null}
+      {valid && snapshot.isPending && !snapshot.data ? <DetailSkeleton lines={4} /> : null}
       {missing ? (
         <Stack gap={3}>
           <RecordNotFound what="version" />
@@ -63,10 +83,10 @@ export function IncidentVersionScreen() {
           />
         </Stack>
       ) : null}
-      {snapshot.isError && !missing ? (
+      {snapshot.isError && !missing && !snapshot.data ? (
         <ErrorState error={snapshot.error} onRetry={() => void snapshot.refetch()} />
       ) : null}
-      {snapshot.data ? (
+      {snapshot.data && !missing ? (
         <Stack gap={4}>
           <Banner
             icon="history"
@@ -89,26 +109,37 @@ export function IncidentVersionScreen() {
             <TimelineBar
               nodes={nodes}
               currentVersion={last ?? snapshot.data.version}
-              selectedVersion={snapshot.data.version}
+              selectedVersion={version ?? snapshot.data.version}
               onSelect={go}
             />
           ) : null}
-          <VersionSnapshot version={snapshot.data} changedFields={node?.changedFields ?? []} />
+          <View
+            style={switching && styles.switching}
+            aria-busy={switching}
+            accessibilityState={{ busy: switching }}
+          >
+            <VersionSnapshot
+              version={snapshot.data}
+              changedFields={
+                nodes.find((n) => n.version === snapshot.data.version)?.changedFields ?? []
+              }
+            />
+          </View>
           <Row gap={2} wrap>
             <Button
               label="Previous version"
               variant="secondary"
               size="desk"
-              disabled={snapshot.data.version <= 1}
-              onPress={() => go(snapshot.data.version - 1)}
+              disabled={version === null || version <= 1}
+              onPress={() => version !== null && go(version - 1)}
               testID="prev-version"
             />
             <Button
               label="Next version"
               variant="secondary"
               size="desk"
-              disabled={last === undefined || snapshot.data.version >= last}
-              onPress={() => go(snapshot.data.version + 1)}
+              disabled={version === null || last === undefined || version >= last}
+              onPress={() => version !== null && go(version + 1)}
               testID="next-version"
             />
             <Button
@@ -123,3 +154,8 @@ export function IncidentVersionScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  // A quiet hint while the next version loads; the previous one stays in place.
+  switching: { opacity: 0.6 },
+});

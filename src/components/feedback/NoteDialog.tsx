@@ -12,6 +12,8 @@ export interface NoteDialogProps {
   /** Reject and Reopen need a reason: Confirm stays disabled until one is typed. */
   required?: boolean | undefined;
   noteLabel?: string | undefined;
+  /** false: a plain confirmation with no note box (e.g. Approve). Default true. */
+  withNote?: boolean | undefined;
   pending?: boolean | undefined;
   error?: unknown;
   onConfirm: (note: string | undefined) => void;
@@ -30,6 +32,7 @@ function NoteForm({
   confirmLabel,
   required = false,
   noteLabel = required ? "Reason" : "Note (optional)",
+  withNote = true,
   pending = false,
   error,
   onConfirm,
@@ -43,16 +46,18 @@ function NoteForm({
     <BottomSheet visible title={title} onClose={onClose}>
       <Stack gap={4}>
         {description ? <Text tone="muted">{description}</Text> : null}
-        <TextField
-          label={noteLabel}
-          required={required}
-          value={note}
-          onChangeText={setNote}
-          multiline
-          maxLength={LIMITS.note + 200}
-          error={problem}
-          testID="note-input"
-        />
+        {withNote ? (
+          <TextField
+            label={noteLabel}
+            required={required}
+            value={note}
+            onChangeText={setNote}
+            multiline
+            maxLength={LIMITS.note + 200}
+            error={problem}
+            testID="note-input"
+          />
+        ) : null}
         <MutationError error={error} />
         <Button
           label={confirmLabel}

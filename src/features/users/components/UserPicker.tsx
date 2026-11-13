@@ -16,6 +16,8 @@ export interface UserPickerProps {
   role?: Role | undefined;
   /** Text for the "no filter / unassigned" choice. Omit to force a choice. */
   anyLabel?: string | undefined;
+  /** Show each person's number of open (live) actions next to their name. */
+  showOpenActions?: boolean | undefined;
   helper?: string | undefined;
   testID?: string | undefined;
 }
@@ -30,6 +32,7 @@ export function UserPicker({
   onChange,
   role,
   anyLabel,
+  showOpenActions = false,
   helper,
   testID,
 }: UserPickerProps) {
@@ -41,9 +44,11 @@ export function UserPicker({
       value: u.id,
       label: u.fullName,
       description: roleLabel[u.role],
+      count: showOpenActions ? u.openActionCount : undefined,
+      countLabel: "open actions",
     }));
     return anyLabel ? [{ value: ANY, label: anyLabel }, ...users] : users;
-  }, [query.data, anyLabel]);
+  }, [query.data, anyLabel, showOpenActions]);
 
   if (!staff) return null;
   return (

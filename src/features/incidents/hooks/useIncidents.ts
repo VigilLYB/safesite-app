@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { actionsApi, compact, incidentKeys, incidentsApi, actionKeys } from "@/lib/api";
 import type { IncidentFilters } from "@/lib/api";
 import { isUuid } from "@/lib/validation";
@@ -43,6 +43,8 @@ export function useIncidentVersion(id: string, version: number | null) {
     enabled: version !== null && isUuid(id),
     // The snapshot never changes, but its media links expire after 60 min (guide §2.5).
     staleTime: 50 * 60_000,
+    // Switching versions keeps the current one on screen until the next arrives (no flash).
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -176,10 +176,12 @@ function Wizard({ onClose, onSubmit, pending, error }: Omit<AssignActionWizardPr
             />
             <UserPicker
               label="Assign to"
+              role="SUPERVISOR"
+              showOpenActions
               anyLabel="Unassigned"
               value={form.assigneeId || null}
               onChange={(id) => patch({ assigneeId: id ?? "" })}
-              helper="Unassigned actions stay open."
+              helper="Supervisors, with their open actions. Unassigned actions stay open."
               testID="assign-assignee"
             />
             <TextField

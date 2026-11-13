@@ -5,7 +5,8 @@ export { IncidentsScreen } from "./components/IncidentsScreen";
 export { compactCustomFields, KNOWN_FIELDS } from "./lib/custom-fields";
 export { CustomFieldsEditor } from "./components/CustomFieldsEditor";
 export { useIncident, useIncidentList } from "./hooks/useIncidents";
-export { useRetryTranscription, useRunPpeScan } from "./hooks/useIncidentMutations";
+export { useRetryTranscription } from "./hooks/useIncidentMutations";
+export { useAutoPpeScan } from "./hooks/useAutoPpeScan";
 export {
   defaultTab,
   effectiveRootsOnly,

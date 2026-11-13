@@ -138,6 +138,8 @@ export function useRunPpeScan() {
     mutationFn: (id: string) => incidentsApi.runPpeScan(id),
     onSuccess: (scan) => {
       void queryClient.invalidateQueries({ queryKey: incidentKeys.ppe(scan.incidentId) });
+      // Lists carry the high-confidence PPE flag.
+      void queryClient.invalidateQueries({ queryKey: incidentKeys.lists() });
     },
   });
 }

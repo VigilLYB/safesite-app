@@ -200,9 +200,9 @@ describe("Journey: supervisor assigns a corrective action", () => {
     await press(view, "assigned-banner").catch(() => undefined);
     await fireEvent.press(await view.findByLabelText("Open action"));
 
-    // Delivered before Ordered: the button is disabled with a reason.
-    expect((await view.findByTestId("mark-done-2")).props.accessibilityState?.disabled).toBe(true);
-    expect(await view.findByText("Complete ‘Ordered’ first")).toBeTruthy();
+    // Only the next milestone has a button; later ones are listed without controls.
+    await view.findByTestId("mark-done-1");
+    expect(view.queryByTestId("mark-done-2")).toBeNull();
     await press(view, "mark-done-1");
     await waitFor(() => expect(view.queryByTestId("mark-done-1")).toBeNull());
     await press(view, "mark-done-2");
@@ -287,13 +287,18 @@ describe("Journey: reassigning an action", () => {
     await cleanup();
 
     const detail = await launch(be, { as: S, url: `/actions/${action!.id}` });
-    await pick(detail, "reassign-picker", "Sana Shaikh");
+    await fireEvent.press(await detail.findByTestId("reassign-picker"));
+    // Only supervisors can be picked.
+    expect(detail.queryByText("Sana Shaikh")).toBeNull();
+    const options = await detail.findAllByRole("radio");
+    expect(options).toHaveLength(2); // Unassigned + the one supervisor
+    await fireEvent.press(options[1]!);
     await waitFor(() => expect(be.called("PUT", "/assignee")).toHaveLength(1));
-    const sana = be.userByEmail("contractor@plantx.demo")!.id;
-    expect(be.called("PUT", "/assignee")[0]?.body).toEqual({ assigneeId: sana });
-    expect(action!.assigneeId).toBe(sana);
+    const anita = be.userByEmail("supervisor@plantx.demo")!.id;
+    expect(be.called("PUT", "/assignee")[0]?.body).toEqual({ assigneeId: anita });
+    expect(action!.assigneeId).toBe(anita);
     expect(labels(rec).at(-1)).toBe("Reassigned Action");
-    expect(await detail.findByLabelText("Assignee: Sana Shaikh")).toBeTruthy();
+    expect(await detail.findByLabelText("Assignee: Anita Desai")).toBeTruthy();
     await cleanup();
 
     const worker = await launch(be, { as: "worker@plantx.demo", url: `/actions/${action!.id}` });
@@ -335,21 +340,23 @@ describe("Journey: duplicates, similar reports and PPE", () => {
     expect(await view.findByTestId("linked-reports")).toBeTruthy();
   });
 
-  it("Similar shows AI scores as whole percentages", async () => {
+  it("has no Similar section: only linked reports belong to the thread", async () => {
     const a = be.seedIncident({ reporter: wid(), title: "A" });
     be.seedIncident({ reporter: wid(), title: "B" });
     const view = await launch(be, { as: S, url: `/incidents/${a.id}?tab=similar` });
-    expect(await view.findByText("84% similar")).toBeTruthy();
-    expect(be.called("GET", "/similar")[0]?.query.get("limit")).toBe("5");
+    expect((await view.findAllByTestId("tab-location")).length).toBeGreaterThan(0); // fallback
+    expect(view.queryByText("Similar")).toBeNull();
+    expect(be.called("GET", "/similar")).toHaveLength(0);
   });
 
-  it("runs a PPE scan on a report with a photo and says the result is simulated/AI", async () => {
+  it("checks PPE automatically, once per photo, with no manual re-run", async () => {
     const rec = be.seedIncident({ reporter: wid(), title: "No helmet", photoKey: "photo/x/1" });
     const view = await launch(be, { as: S, url: `/incidents/${rec.id}?tab=ppe` });
-    expect(await view.findByText("No PPE scans yet")).toBeTruthy();
-    await press(view, "ppe-run");
     await waitFor(() => expect(be.called("POST", "/ppe-scans")).toHaveLength(1));
     expect(be.called("POST", "/ppe-scans")[0]?.body).toBeUndefined();
+    expect(view.queryByTestId("ppe-run")).toBeNull();
+    await view.findAllByTestId("tab-ppe");
+    expect(be.called("POST", "/ppe-scans")).toHaveLength(1);
   });
 
   it("no photo, no PPE button", async () => {

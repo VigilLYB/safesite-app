@@ -74,6 +74,8 @@ export const incidentSummarySchema = z.object({
   reporter: personRefSchema,
   clusterParentId: z.string().nullable(),
   duplicateCount: z.number().int(),
+  /** The current photo's PPE scan found missing equipment with very high confidence. */
+  ppeViolation: z.boolean().optional(),
   createdAt: z.string(),
 });
 export type IncidentSummary = z.infer<typeof incidentSummarySchema>;

@@ -107,7 +107,7 @@ export function ActionsScreen() {
               key={action.id}
               action={action}
               onPress={(item) => router.push(`/actions/${item.id}` as Href)}
-              onOpenIncident={(id) => router.push(`/incidents/${id}` as Href)}
+              onOpenIncident={(id) => router.push(`/actions/report/${id}` as Href)}
             />
           ))}
           {query.isFetchNextPageError ? (

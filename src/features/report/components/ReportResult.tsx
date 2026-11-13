@@ -5,7 +5,7 @@ import { languageLabel } from "@/lib/labels";
 import { Badge, Button, Card, Row, Stack, Text } from "@/components/ui";
 import { Banner, MutationError } from "@/components/feedback";
 import { SeverityBadge } from "@/components/domain";
-import { useIncident, useRetryTranscription, useRunPpeScan } from "@/features/incidents";
+import { useAutoPpeScan, useIncident, useRetryTranscription } from "@/features/incidents";
 
 export interface ReportResultProps {
   result: SubmitIncidentResponse;
@@ -19,7 +19,7 @@ export function ReportResult({ result, onAnother, onDone }: ReportResultProps) {
   const live = useIncident(result.incident.id);
   const incident = live.data ?? result.incident;
   const retry = useRetryTranscription();
-  const ppe = useRunPpeScan();
+  const ppe = useAutoPpeScan(incident);
   const ai = result.ai;
   const open = (path: string) => router.push(path as Href);
   const transcription = ai?.transcription;
@@ -123,17 +123,16 @@ export function ReportResult({ result, onAnother, onDone }: ReportResultProps) {
 
       {incident.photo && incident.permissions.canRunPpeScan ? (
         <Card>
+          <Text variant="caption" tone="muted">
+            {ppe.running ? "Checking the photo for PPE…" : "PPE is checked automatically."}
+          </Text>
           <Button
-            label="Check PPE"
+            label="View PPE check"
             variant="secondary"
             size="desk"
             icon="shield"
-            loading={ppe.isPending}
-            onPress={() =>
-              ppe.mutate(incident.id, {
-                onSuccess: () => open(`/incidents/${incident.id}?tab=ppe`),
-              })
-            }
+            loading={ppe.running}
+            onPress={() => open(`/incidents/${incident.id}?tab=ppe`)}
             testID="result-ppe"
           />
           <MutationError error={ppe.error} />

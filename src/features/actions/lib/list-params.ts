@@ -12,7 +12,7 @@ export const WORKER_ACTION_TABS = [
 ] as const;
 
 export const STAFF_ACTION_TABS = [
-  { value: "active", label: "Active", filters: { status: ACTIVE } },
+  { value: "active", label: "Active", filters: { status: ACTIVE, sort: "assigned" } },
   { value: "overdue", label: "Overdue", filters: { overdue: true } },
   { value: "mine", label: "Assigned to me", filters: { mine: true } },
   { value: "done", label: "Completed", filters: { status: "DONE" } },

@@ -6,3 +6,5 @@ export { Toggle } from "./Toggle";
 export type { ToggleProps } from "./Toggle";
 export { DateRangeField, describeRange } from "./DateRangeField";
 export type { DateRangeFieldProps, DayRangeValue } from "./DateRangeField";
+export { DayCalendar, DayPickerButton } from "./DayPicker";
+export type { DayCalendarProps, DayPickerButtonProps } from "./DayPicker";

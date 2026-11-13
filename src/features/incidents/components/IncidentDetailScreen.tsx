@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useState } from "react";
+import { useLocalSearchParams, usePathname, useRouter, type Href } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { incidentKeys, isApiError, type Incident, type TransitionEvent } from "@/lib/api";
 import { displayTitle } from "@/lib/format";
@@ -26,7 +26,7 @@ import {
 import { AssignActionWizard } from "@/features/actions";
 import { useSession } from "@/features/auth";
 import { useIncidentChanges } from "../hooks/useIncidentChanges";
-import { useRunPpeScan } from "../hooks/useIncidentMutations";
+import { useAutoPpeScan } from "../hooks/useAutoPpeScan";
 import { useIncident, useIncidentTimeline } from "../hooks/useIncidents";
 import { ActionBar, type DialogKind } from "./ActionBar";
 import { EditIncidentDialog } from "./EditIncidentDialog";
@@ -40,9 +40,8 @@ import { HistoryTab } from "./tabs/HistoryTab";
 import { LocationTab } from "./tabs/LocationTab";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { PpeTab } from "./tabs/PpeTab";
-import { SimilarTab } from "./tabs/SimilarTab";
 
-type TabKey = "location" | "history" | "similar" | "action" | "ppe";
+type TabKey = "location" | "history" | "action" | "ppe";
 
 const WORKFLOW_COPY: Record<
   TransitionEvent,
@@ -73,16 +72,16 @@ const WORKFLOW_COPY: Record<
   close: { title: "Close report", description: "Close this resolved report.", confirm: "Close" },
 };
 
-/** The report itself and its linked reports are always shown above; these are the extras. */
-function availableTabs(staff: boolean): TabOption<TabKey>[] {
-  const tabs: TabOption<TabKey>[] = [
-    { value: "location", label: "Location" },
-    { value: "history", label: "History" },
-  ];
-  if (staff) tabs.push({ value: "similar", label: "Similar" });
-  tabs.push({ value: "action", label: "Action" }, { value: "ppe", label: "PPE" });
-  return tabs;
-}
+/**
+ * The report itself and its linked reports (exact duplicates) are always shown above; these are
+ * the extras. Loosely similar reports are not shown: only linked reports belong to the thread.
+ */
+const TABS: TabOption<TabKey>[] = [
+  { value: "location", label: "Location" },
+  { value: "history", label: "History" },
+  { value: "action", label: "Action" },
+  { value: "ppe", label: "PPE" },
+];
 
 /**
  * Incident detail (guide §4.4): the report itself first, then its linked reports as a thread,
@@ -96,7 +95,13 @@ export function IncidentDetailScreen() {
   const valid = isUuid(incidentId);
   const query = useIncident(incidentId);
 
-  const back = () => (router.canGoBack() ? router.back() : router.replace("/incidents" as Href));
+  // Opened from Actions (/actions/report/:id): the report lives in the Actions stack, so Back
+  // returns to the action or list it came from, never to the incident list.
+  const fromActions = usePathname().startsWith("/actions");
+  const back = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace((fromActions ? "/actions" : "/incidents") as Href);
+  };
   const incident = query.data;
 
   return (
@@ -109,7 +114,12 @@ export function IncidentDetailScreen() {
         title={incident ? displayTitle(incident) : "Report"}
         titleTestID={incident ? "incident-title" : undefined}
         onBack={back}
-        trail={[{ label: isStaff(user?.role) ? "Incidents" : "My reports", onPress: back }]}
+        trail={[
+          {
+            label: fromActions ? "Actions" : isStaff(user?.role) ? "Incidents" : "My reports",
+            onPress: back,
+          },
+        ]}
       />
       {!valid ? <RecordNotFound what="report" /> : null}
       {valid && query.isPending ? <DetailSkeleton lines={5} /> : null}
@@ -121,12 +131,7 @@ export function IncidentDetailScreen() {
         )
       ) : null}
       {incident ? (
-        <Loaded
-          incident={incident}
-          staff={isStaff(user?.role)}
-          tabParam={tab}
-          refreshing={query.isRefetching}
-        />
+        <Loaded incident={incident} tabParam={tab} refreshing={query.isRefetching} />
       ) : null}
     </Screen>
   );
@@ -134,26 +139,22 @@ export function IncidentDetailScreen() {
 
 function Loaded({
   incident,
-  staff,
   tabParam,
   refreshing,
 }: {
   incident: Incident;
-  staff: boolean;
   tabParam: string | undefined;
   refreshing: boolean;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const changes = useIncidentChanges(incident);
-  const ppe = useRunPpeScan();
+  const ppe = useAutoPpeScan(incident);
   const timeline = useIncidentTimeline(incident.id);
-  const tabs = useMemo(() => availableTabs(staff), [staff]);
-  const current: TabKey = tabs.some((t) => t.value === tabParam)
+  const current: TabKey = TABS.some((t) => t.value === tabParam)
     ? (tabParam as TabKey)
     : "location";
   const [dialog, setDialog] = useState<DialogKind | null>(null);
-  const [linkPreset, setLinkPreset] = useState<string | null>(null);
   const parent = useIncident(incident.cluster.parentIncidentId ?? "none");
 
   const setTab = (next: TabKey) =>
@@ -163,7 +164,6 @@ function Loaded({
   };
   const close = () => {
     setDialog(null);
-    setLinkPreset(null);
     changes.clearError();
   };
   const onOutcome = (outcome: string) => {
@@ -179,11 +179,7 @@ function Loaded({
         retrying={changes.retryingTranscription}
       />
       <MutationError error={changes.transcriptionError} />
-      <OverviewTab
-        incident={incident}
-        onRefreshMedia={refreshAll}
-        onOpenLocation={() => setTab("location")}
-      />
+      <OverviewTab incident={incident} onRefreshMedia={refreshAll} />
       {incident.duplicateCount > 0 ? (
         <LinkedReportsThread parentId={incident.id} mode="children" currentId={incident.id} />
       ) : null}
@@ -227,7 +223,7 @@ function Loaded({
           refreshing={refreshing}
         />
       </Card>
-      <TabStrip label="Report sections" tabs={tabs} value={current} onChange={setTab} />
+      <TabStrip label="Report sections" tabs={TABS} value={current} onChange={setTab} />
 
       {current === "location" ? (
         <LocationTab
@@ -238,26 +234,11 @@ function Loaded({
         />
       ) : null}
       {current === "history" ? <HistoryTab incidentId={incident.id} /> : null}
-      {current === "similar" ? (
-        <SimilarTab
-          incidentId={incident.id}
-          canCluster={incident.permissions.canCluster}
-          onLinkUnder={(parentId) => {
-            setLinkPreset(parentId);
-            setDialog({ kind: "link" });
-          }}
-        />
-      ) : null}
       {current === "action" ? (
         <ActionTab incident={incident} onAssign={() => setDialog({ kind: "assign" })} />
       ) : null}
       {current === "ppe" ? (
-        <PpeTab
-          incident={incident}
-          onRun={() => ppe.mutate(incident.id)}
-          running={ppe.isPending}
-          error={ppe.error}
-        />
+        <PpeTab incident={incident} running={ppe.running} error={ppe.error} onRetry={ppe.retry} />
       ) : null}
 
       <EditIncidentDialog
@@ -275,6 +256,7 @@ function Loaded({
           description={WORKFLOW_COPY[dialog.event].description}
           confirmLabel={WORKFLOW_COPY[dialog.event].confirm}
           required={dialog.event === "reject" || dialog.event === "reopen"}
+          withNote={dialog.event !== "approve"}
           pending={changes.busy}
           error={changes.error}
           onConfirm={async (note) => onOutcome(await changes.transition(dialog.event, note))}
@@ -294,7 +276,7 @@ function Loaded({
       <LinkDuplicateDialog
         incident={incident}
         visible={dialog?.kind === "link"}
-        initialParentId={linkPreset}
+        initialParentId={null}
         error={changes.error}
         pending={changes.busy}
         onLink={changes.link}

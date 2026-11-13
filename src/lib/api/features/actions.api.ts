@@ -13,6 +13,8 @@ export interface ActionFilters extends Query {
   overdue?: boolean | undefined;
   assigneeId?: string | undefined;
   incidentId?: string | undefined;
+  /** `due` (default): live first, earliest due. `assigned`: latest assigned first. */
+  sort?: "due" | "assigned" | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
 }

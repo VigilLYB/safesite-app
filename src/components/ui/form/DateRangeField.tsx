@@ -6,6 +6,7 @@ import { Button, IconButton } from "../actions";
 import { Icon } from "../icons";
 import { BottomSheet } from "../overlay";
 import { Text } from "../Text";
+import { MONTHS, monthGrid, parts, shift, short, WEEKDAYS, ymd } from "./calendar";
 
 export interface DayRangeValue {
   /** First day, inclusive, "YYYY-MM-DD" (plant time). */
@@ -23,37 +24,11 @@ export interface DateRangeFieldProps {
   testID?: string | undefined;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
-
-const parts = (ymd: string) => ymd.split("-").map(Number) as [number, number, number];
-const ymd = (y: number, m: number, d: number) =>
-  `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-const shift = (day: string, days: number) => {
-  const [y, m, d] = parts(day);
-  return new Date(Date.UTC(y, m - 1, d) + days * 86_400_000).toISOString().slice(0, 10);
-};
-const short = (day: string) => {
-  const [, m, d] = parts(day);
-  return `${d} ${MONTHS[m - 1]}`;
-};
-
 /** "Any date", "12 Nov", or "3 Nov – 12 Nov". */
 export function describeRange({ fromDay, toDay }: DayRangeValue): string {
   if (!fromDay && !toDay) return "Any date";
   if (fromDay && toDay && fromDay !== toDay) return `${short(fromDay)} – ${short(toDay)}`;
   return short((fromDay ?? toDay) as string);
-}
-
-/** Monday-first grid of one month: leading blanks, then the days. */
-function monthGrid(year: number, month: number): (string | null)[] {
-  const first = new Date(Date.UTC(year, month - 1, 1)).getUTCDay(); // 0 = Sunday
-  const lead = (first + 6) % 7;
-  const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  return [
-    ...Array.from({ length: lead }, () => null),
-    ...Array.from({ length: days }, (_, i) => ymd(year, month, i + 1)),
-  ];
 }
 
 type End = "from" | "to";

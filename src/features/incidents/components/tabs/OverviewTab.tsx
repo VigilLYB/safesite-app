@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import type { Incident } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { languageLabel, locationSourceLabel } from "@/lib/labels";
+import { languageLabel } from "@/lib/labels";
 import { palette, space } from "@/lib/theme";
-import { Button, Card, Icon, Row, Section, Stack, Text, type IconName } from "@/components/ui";
+import { Card, Icon, Row, Section, Stack, Text, type IconName } from "@/components/ui";
 import { InlineNotice } from "@/components/feedback";
 import { SeverityBadge } from "@/components/domain";
 import { AudioPlayerButton, isMediaExpired, MediaMessage, MediaPhoto } from "@/features/media";
@@ -46,11 +46,10 @@ function FactTile({
 export interface OverviewTabProps {
   incident: Incident;
   onRefreshMedia: () => void;
-  onOpenLocation: () => void;
 }
 
 /** Photo, voice note, transcript (labelled as AI), description, category, severity, extra details. */
-export function OverviewTab({ incident, onRefreshMedia, onOpenLocation }: OverviewTabProps) {
+export function OverviewTab({ incident, onRefreshMedia }: OverviewTabProps) {
   const extra = Object.entries(incident.customFields);
   const language = incident.transcriptLanguage
     ? (languageLabel[incident.transcriptLanguage] ?? incident.transcriptLanguage)
@@ -124,23 +123,6 @@ export function OverviewTab({ incident, onRefreshMedia, onOpenLocation }: Overvi
             ))}
           </View>
         </Stack>
-      </Section>
-      <Section title="Location" icon="pin">
-        <Card>
-          <Stack gap={2}>
-            <Text variant="caption" tone="muted">
-              {incident.location.areaName ?? "No area"} ·{" "}
-              {locationSourceLabel[incident.location.source]}
-            </Text>
-            <Button
-              label="View on the floor plan"
-              variant="tertiary"
-              size="desk"
-              icon="map"
-              onPress={onOpenLocation}
-            />
-          </Stack>
-        </Card>
       </Section>
     </Stack>
   );
