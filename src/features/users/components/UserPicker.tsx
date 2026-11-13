@@ -14,6 +14,8 @@ export interface UserPickerProps {
   onChange: (id: string | null) => void;
   /** Only users with this role. */
   role?: Role | undefined;
+  /** Hide users with these roles from the list (e.g. a corrective action isn't assigned to a manager). */
+  excludeRoles?: Role[] | undefined;
   /** Text for the "no filter / unassigned" choice. Omit to force a choice. */
   anyLabel?: string | undefined;
   helper?: string | undefined;
@@ -29,6 +31,7 @@ export function UserPicker({
   value,
   onChange,
   role,
+  excludeRoles,
   anyLabel,
   helper,
   testID,
@@ -37,13 +40,15 @@ export function UserPicker({
   const staff = isStaff(user?.role);
   const query = useUsers(role, staff);
   const options = useMemo(() => {
-    const users = (query.data ?? []).map((u) => ({
-      value: u.id,
-      label: u.fullName,
-      description: roleLabel[u.role],
-    }));
+    const users = (query.data ?? [])
+      .filter((u) => !excludeRoles?.includes(u.role))
+      .map((u) => ({
+        value: u.id,
+        label: u.fullName,
+        description: roleLabel[u.role],
+      }));
     return anyLabel ? [{ value: ANY, label: anyLabel }, ...users] : users;
-  }, [query.data, anyLabel]);
+  }, [query.data, excludeRoles, anyLabel]);
 
   if (!staff) return null;
   return (
