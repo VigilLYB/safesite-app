@@ -44,6 +44,8 @@ export interface SubmitIncidentInput {
       }
     | undefined;
   customFields?: CustomFields | undefined;
+  /** When the hazard was seen (device clock, ISO). Matters for reports saved offline. */
+  capturedAt?: string | undefined;
 }
 
 export type CustomFields = Record<string, string | number | boolean | null>;

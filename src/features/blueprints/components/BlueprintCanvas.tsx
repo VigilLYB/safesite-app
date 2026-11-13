@@ -15,12 +15,15 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { clampPoint } from "@/lib/geometry";
+import { useFloorPlanImage } from "@/lib/offline/floor-plans";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { motion, palette, radii, space } from "@/lib/theme";
 import { IconButton, Text } from "@/components/ui";
 
 export interface CanvasBlueprint {
   imageUrl: string | null;
+  /** When given, a copy of the image saved on the device is drawn instead (works offline). */
+  imageKey?: string | null | undefined;
   widthPx: number;
   heightPx: number;
 }
@@ -55,7 +58,10 @@ export function BlueprintCanvas({
 }: BlueprintCanvasProps) {
   const reduced = useReducedMotion();
   const [width, setWidth] = useState(0);
-  const [failed, setFailed] = useState(false);
+  const imageUri = useFloorPlanImage(blueprint);
+  // Which image failed: switching to the saved copy (or a fresh link) gets a new chance.
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const failed = imageUri !== null && failedUri === imageUri;
   const [zoomLevel, setZoomLevel] = useState(1);
   const fit = blueprint.widthPx > 0 ? width / blueprint.widthPx : 0;
   const height = fit * blueprint.heightPx;
@@ -149,18 +155,18 @@ export function BlueprintCanvas({
         <View style={[styles.frame, { height }]} accessibilityLabel={accessibilityLabel}>
           <GestureDetector gesture={gestures}>
             <Animated.View style={[StyleSheet.absoluteFill, contentStyle]}>
-              {blueprint.imageUrl && !failed ? (
+              {imageUri && !failed ? (
                 <Image
-                  source={{ uri: blueprint.imageUrl }}
+                  source={{ uri: imageUri }}
                   style={StyleSheet.absoluteFill}
                   resizeMode="contain"
                   onError={() => {
-                    setFailed(true);
+                    setFailedUri(imageUri);
                     onImageError?.();
                   }}
                 />
               ) : null}
-              {blueprint.imageUrl && failed ? (
+              {imageUri && failed ? (
                 <View style={styles.unavailable}>
                   <Text variant="caption" tone="muted">
                     Media unavailable

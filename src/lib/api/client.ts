@@ -43,8 +43,21 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
+/**
+ * After a 401 on an authenticated call: try one token refresh. Resolves true when the call should
+ * be repeated with the new token; otherwise signs the person out and resolves false.
+ */
+async function recoverFromUnauthorized(usedToken: string | null): Promise<boolean> {
+  if (usedToken) {
+    const next = await authBridge.refresh(usedToken); // a network error here propagates
+    if (next) return true;
+  }
+  authBridge.notifyUnauthorized();
+  return false;
+}
+
 /** The only place the app talks HTTP to the SafeSite API. */
-export async function request<T>(options: RequestOptions<T>): Promise<T> {
+export async function request<T>(options: RequestOptions<T>, retried = false): Promise<T> {
   const { endpoint, schema, params, query, body, auth = true, signal } = options;
   const url = `${config.API_BASE_URL}${buildPath(endpoint, params)}${toQueryString(query)}`;
 
@@ -106,7 +119,10 @@ export async function request<T>(options: RequestOptions<T>): Promise<T> {
       payload,
       response.headers.get("x-correlation-id") ?? correlationId,
     );
-    if (error.kind === "unauthorized" && auth) authBridge.notifyUnauthorized();
+    if (error.kind === "unauthorized" && auth) {
+      if (!retried && (await recoverFromUnauthorized(token))) return request(options, true);
+      if (retried) authBridge.notifyUnauthorized();
+    }
     throw error;
   }
 
@@ -124,13 +140,16 @@ export async function request<T>(options: RequestOptions<T>): Promise<T> {
 }
 
 /** Like `request`, but for a non-JSON file response (e.g. the CSV audit export): no body, raw text out. */
-export async function requestText(options: {
-  endpoint: Endpoint;
-  params?: PathParams | undefined;
-  query?: Query | undefined;
-  signal?: AbortSignal | undefined;
-  timeoutMs?: number | undefined;
-}): Promise<string> {
+export async function requestText(
+  options: {
+    endpoint: Endpoint;
+    params?: PathParams | undefined;
+    query?: Query | undefined;
+    signal?: AbortSignal | undefined;
+    timeoutMs?: number | undefined;
+  },
+  retried = false,
+): Promise<string> {
   const { endpoint, params, query, signal } = options;
   const url = `${config.API_BASE_URL}${buildPath(endpoint, params)}${toQueryString(query)}`;
 
@@ -182,7 +201,10 @@ export async function requestText(options: {
       payload,
       response.headers.get("x-correlation-id") ?? correlationId,
     );
-    if (error.kind === "unauthorized") authBridge.notifyUnauthorized();
+    if (error.kind === "unauthorized") {
+      if (!retried && (await recoverFromUnauthorized(token))) return requestText(options, true);
+      if (retried) authBridge.notifyUnauthorized();
+    }
     throw error;
   }
   return response.text();

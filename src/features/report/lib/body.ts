@@ -10,6 +10,8 @@ export interface ReportInput {
   pin: { blueprintId: string; x: number; y: number } | null;
   gps: { lat: number; lng: number; accuracyM?: number | undefined } | null;
   custom: CustomFields;
+  /** When the person tapped Send (device clock). Lets the server show when a hazard was seen. */
+  capturedAt?: string | undefined;
   photoKey?: string | undefined;
   audioKey?: string | undefined;
 }
@@ -65,5 +67,6 @@ export function buildSubmitBody(input: ReportInput): SubmitIncidentInput {
     ...(input.audioKey ? { audioKey: input.audioKey } : {}),
     ...(location ? { location } : {}),
     ...(customFields ? { customFields } : {}),
+    ...(input.capturedAt ? { capturedAt: input.capturedAt } : {}),
   };
 }

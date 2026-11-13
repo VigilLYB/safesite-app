@@ -11,6 +11,15 @@ import {
   type AssignActionInput,
 } from "@/lib/api";
 import { isUuid } from "@/lib/validation";
+import { isOnline } from "@/lib/offline/network";
+import {
+  isOfflineError,
+  isQueuedResult,
+  mayHaveBeenSent,
+  queueActionComplete,
+  queueMilestone,
+} from "@/lib/offline/queue-change";
+import type { QueryClient } from "@tanstack/react-query";
 import { ACTIONS_PAGE_SIZE } from "../lib/list-params";
 
 /** Offset paging, 50 per page; stops when fewer than 50 come back (there is no total count). */
@@ -65,13 +74,38 @@ export function useAssignAction() {
   });
 }
 
-/** Completing work can resolve the incident, so refresh incidents and analytics too. */
-function useProgress<V>(mutationFn: (variables: V) => Promise<Action>) {
+type Queue<V> = (
+  queryClient: QueryClient,
+  variables: V,
+  maybeSent: boolean,
+) => Promise<Action | null>;
+
+/**
+ * Completing work can resolve the incident, so refresh incidents and analytics too.
+ * With `queue`, the change is saved on the device when there is no connection, shown at once,
+ * and sent later by the outbox (the server treats a repeat as a no-op).
+ */
+function useProgress<V>(mutationFn: (variables: V) => Promise<Action>, queue?: Queue<V>) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn,
+    mutationFn: async (variables: V) => {
+      if (queue && !isOnline()) {
+        const queued = await queue(queryClient, variables, false);
+        if (queued) return queued;
+      }
+      try {
+        return await mutationFn(variables);
+      } catch (error) {
+        if (queue && isOfflineError(error)) {
+          const queued = await queue(queryClient, variables, mayHaveBeenSent(error));
+          if (queued) return queued;
+        }
+        throw error;
+      }
+    },
     onSuccess: (action) => {
       queryClient.setQueryData(actionKeys.detail(action.id), action);
+      if (isQueuedResult(action)) return; // offline: a refetch now would undo what is shown
       void queryClient.invalidateQueries({ queryKey: actionKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: incidentKeys.detail(action.incident.id) });
       void queryClient.invalidateQueries({ queryKey: incidentKeys.lists() });
@@ -86,8 +120,11 @@ function useProgress<V>(mutationFn: (variables: V) => Promise<Action>) {
 }
 
 export const useCompleteMilestone = () =>
-  useProgress((v: { actionId: string; milestoneId: string }) =>
-    actionsApi.completeMilestone(v.actionId, v.milestoneId),
+  useProgress(
+    (v: { actionId: string; milestoneId: string }) =>
+      actionsApi.completeMilestone(v.actionId, v.milestoneId),
+    (queryClient, v, maybeSent) =>
+      queueMilestone(queryClient, v.actionId, v.milestoneId, { maybeSent }),
   );
 
 /** Staff move a live action to someone else; the report's timeline gains a node, so refresh it. */
@@ -97,4 +134,7 @@ export const useReassignAction = () =>
   );
 
 export const useCompleteAction = () =>
-  useProgress((actionId: string) => actionsApi.complete(actionId));
+  useProgress(
+    (actionId: string) => actionsApi.complete(actionId),
+    (queryClient, actionId, maybeSent) => queueActionComplete(queryClient, actionId, { maybeSent }),
+  );

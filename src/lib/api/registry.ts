@@ -16,6 +16,7 @@ export const endpoints = {
   health: e("GET", "/health"),
   login: e("POST", "/v1/auth/login"),
   me: e("GET", "/v1/auth/me"),
+  refresh: e("POST", "/v1/auth/refresh"),
   users: e("GET", "/v1/users"),
   userCreate: e("POST", "/v1/users"),
   presignUpload: e("POST", "/v1/uploads"),

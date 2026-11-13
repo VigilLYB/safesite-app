@@ -6,10 +6,11 @@ import { useBreakpoint } from "@/lib/responsive";
 import { homeFor } from "@/lib/routes";
 import { Button, Screen, ScreenHeader, Section, Stack, Text } from "@/components/ui";
 import { FieldNotice } from "@/components/feedback";
+import { clock } from "@/lib/clock";
 import { useSession } from "@/features/auth";
 import { usePhotoCapture, useVoiceRecorder } from "@/features/media";
 import { useDeviceLocation } from "../hooks/useDeviceLocation";
-import { useSubmitReport } from "../hooks/useSubmitReport";
+import { NotSaved, useSubmitReport } from "../hooks/useSubmitReport";
 import { hasContent } from "../lib/body";
 import { useReportDraft } from "../lib/draft-store";
 import { SavedOnDevice } from "../lib/submit";
@@ -17,6 +18,7 @@ import { CaptureSection } from "./CaptureSection";
 import { DetailsSection } from "./DetailsSection";
 import { LocationSection } from "./LocationSection";
 import { ReportResult } from "./ReportResult";
+import { SavedOnDeviceResult } from "./SavedOnDeviceResult";
 import { SeverityPicker } from "./SeverityPicker";
 
 type FieldErrors = Partial<Record<"title" | "description" | "category", string>>;
@@ -45,18 +47,33 @@ export function ReportScreen() {
     setConfirmDiscard(false);
   };
 
+  const goHome = () => {
+    startOver();
+    router.replace(homeFor(user?.role ?? "WORKER", !isTablet) as Href);
+  };
+
+  // Saved on the device (no connection). The draft has already been reset: the saved copy is
+  // sent automatically, so the form is not shown again with that report in it.
+  if (submit.error instanceof SavedOnDevice && submit.variables) {
+    return (
+      <Screen testID="report-screen">
+        <ScreenHeader title="Saved on this device" />
+        <SavedOnDeviceResult
+          title={submit.variables.input.title || submit.variables.input.category}
+          hasPhoto={Boolean(submit.variables.photo)}
+          hasVoice={Boolean(submit.variables.audio)}
+          onAnother={startOver}
+          onDone={goHome}
+        />
+      </Screen>
+    );
+  }
+
   if (submit.data) {
     return (
       <Screen testID="report-screen">
         <ScreenHeader title="Report sent" />
-        <ReportResult
-          result={submit.data}
-          onAnother={startOver}
-          onDone={() => {
-            startOver();
-            router.replace(homeFor(user?.role ?? "WORKER", !isTablet) as Href);
-          }}
-        />
+        <ReportResult result={submit.data} onAnother={startOver} onDone={goHome} />
       </Screen>
     );
   }
@@ -101,19 +118,21 @@ export function ReportScreen() {
         pin: draft.pin,
         gps: gps.status === "ok" ? { lat: gps.lat, lng: gps.lng, accuracyM: gps.accuracyM } : null,
         custom: draft.custom,
+        capturedAt: new Date(clock.nowMs()).toISOString(),
       },
       photo: photo.photo ? { uri: photo.photo.uri, contentType: photo.photo.contentType } : null,
       audio: voice.uri ? { uri: voice.uri, contentType: voice.contentType } : null,
     });
   };
 
-  const savedOnDevice = submit.error instanceof SavedOnDevice;
   const serverMessage =
-    submit.error && !savedOnDevice
-      ? isApiError(submit.error) && submit.error.kind === "validation"
-        ? submit.error.message
-        : userMessage(submit.error)
-      : null;
+    submit.error instanceof NotSaved
+      ? submit.error.message
+      : submit.error
+        ? isApiError(submit.error) && submit.error.kind === "validation"
+          ? submit.error.message
+          : userMessage(submit.error)
+        : null;
   const progress = submit.isPending
     ? photo.photo || voice.uri
       ? "Uploading and saving…"
@@ -127,9 +146,6 @@ export function ReportScreen() {
         <Stack gap={2}>
           <FieldNotice message={contentError} />
           <FieldNotice message={serverMessage} />
-          {savedOnDevice ? (
-            <FieldNotice message="Saved on this device. We'll send it when the connection is back." />
-          ) : null}
           {progress ? (
             <Text
               variant="caption"
@@ -141,7 +157,7 @@ export function ReportScreen() {
             </Text>
           ) : null}
           <Button
-            label={savedOnDevice ? "Retry now" : "Send report"}
+            label="Send report"
             fullWidth
             loading={submit.isPending}
             onPress={send}

@@ -48,6 +48,18 @@ export async function clearSession(): Promise<void> {
   }
 }
 
+/**
+ * How long after its token expires a saved session can still be resumed. Mirrors the server's
+ * JWT_REFRESH_GRACE_SECONDS: inside it the app opens (offline too) and refreshes the token once
+ * it is online. Past it, the person must sign in again.
+ */
+export const REFRESH_GRACE_MS = 7 * 24 * 60 * 60_000;
+
+export function isPastGrace(session: Session, nowMs: number): boolean {
+  const expiresAt = new Date(session.expiresAt).getTime();
+  return Number.isNaN(expiresAt) || expiresAt + REFRESH_GRACE_MS <= nowMs;
+}
+
 export function isExpired(session: Session, nowMs: number): boolean {
   const expiresAt = new Date(session.expiresAt).getTime();
   return Number.isNaN(expiresAt) || expiresAt <= nowMs;

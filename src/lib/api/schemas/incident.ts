@@ -30,6 +30,8 @@ export const incidentSchema = z.object({
   reporter: personRefSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
+  /** When the reporter saw the hazard (device clock). Optional: older servers do not send it. */
+  capturedAt: z.string().nullish(),
   status: incidentStatusSchema,
   title: z.string().nullable(),
   description: z.string().nullable(),
@@ -77,6 +79,7 @@ export const incidentSummarySchema = z.object({
   /** The current photo's PPE scan found missing equipment with very high confidence. */
   ppeViolation: z.boolean().optional(),
   createdAt: z.string(),
+  capturedAt: z.string().nullish(),
 });
 export type IncidentSummary = z.infer<typeof incidentSummarySchema>;
 

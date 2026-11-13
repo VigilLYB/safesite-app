@@ -13,7 +13,7 @@ import { AppSkeleton, Banner, ServiceUnavailableScreen } from "@/components/feed
 import { HeaderExtraProvider } from "@/components/ui";
 import { useAlerts } from "@/features/alerts";
 import { useSession } from "@/features/auth";
-import { useOfflineSync } from "@/features/report";
+import { SyncBanners } from "@/features/sync";
 import { PhoneTabBar } from "./PhoneTabBar";
 import { ReportHeaderButton } from "./ReportHeaderButton";
 import { tabIcon, useRoleTabOptions } from "./useRoleTabs";
@@ -120,7 +120,6 @@ function RoleTabs({ user }: { user: { id: string; role: Role } }) {
 export function AppShell() {
   const { state, user, expiresAt, retryBoot } = useSession();
   const pathname = usePathname();
-  const offline = useOfflineSync();
 
   if (state.status === "loading") {
     return (
@@ -149,13 +148,7 @@ export function AppShell() {
       <View style={styles.banners}>
         <DemoModeBanner />
         <SessionEndingBanner expiresAt={expiresAt} />
-        {offline.pending > 0 ? (
-          <Banner
-            icon="warn"
-            message={`${offline.pending} report${offline.pending === 1 ? "" : "s"} saved on this device — sending when connected.`}
-            testID="offline-queue-banner"
-          />
-        ) : null}
+        <SyncBanners userId={user.id} />
       </View>
       <HeaderExtraProvider value={managerReport}>
         <RoleTabs user={user} />

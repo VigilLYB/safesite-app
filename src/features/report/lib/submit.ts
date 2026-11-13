@@ -88,18 +88,22 @@ export async function submitWithRecovery(args: {
   let photoKey: string | undefined;
   let audioKey: string | undefined;
   let reuploaded = false;
+  /** Set when the server lost an upload: the next pass uploads that file again. */
+  let forceFresh: "photo" | "audio" | null = null;
 
   for (let attempt = 0; ; attempt += 1) {
     try {
-      photoKey = await keyFor("photo", photo);
-      audioKey = await keyFor("audio", audio);
+      // Inside the try: a re-upload that hits a dropped connection is saved like any other failure.
+      photoKey = await keyFor("photo", photo, forceFresh !== "photo");
+      audioKey = await keyFor("audio", audio, forceFresh !== "audio");
+      forceFresh = null;
       return await deps.submit(build({ photoKey, audioKey }));
     } catch (error) {
       const missing = missingUploadKind(error);
       if (missing && !reuploaded) {
         reuploaded = true;
-        if (missing === "photo") photoKey = await keyFor("photo", photo, false);
-        else audioKey = await keyFor("audio", audio, false);
+        forceFresh = missing;
+        attempt -= 1; // a lost upload is not a connection failure: it does not use up a resend
         continue;
       }
       if (isAmbiguousFailure(error)) {

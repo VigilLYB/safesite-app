@@ -15,3 +15,4 @@ export {
   useCreateBlueprint,
   useDefaultBlueprint,
 } from "./hooks/useBlueprints";
+export { useOfflineFloorPlans } from "./hooks/useOfflineFloorPlans";

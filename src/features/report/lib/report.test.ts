@@ -112,6 +112,13 @@ describe("submit recovery", () => {
     expect(submit.mock.calls[1][0].photoKey).toBe("k2");
     expect(submit.mock.calls[1][0].clientSubmissionId).toBe(base.clientSubmissionId);
   });
+  it("a lost upload whose re-upload hits a dropped connection is saved on the device", async () => {
+    const upload = jest.fn().mockResolvedValueOnce("k1").mockRejectedValue(net());
+    const submit = jest.fn().mockRejectedValueOnce(upNotFound("photo"));
+    await expect(run(mk(submit, upload))).rejects.toBeInstanceOf(SavedOnDevice);
+    expect(submit).toHaveBeenCalledTimes(1);
+    expect(upload).toHaveBeenCalledTimes(4); // first upload, then the re-upload + two resends
+  });
   it("never retries a 400", async () => {
     const bad = new ApiError({
       status: 400,

@@ -37,8 +37,17 @@ describe("Journey: worker reports a hazard", () => {
     const [submit] = be.called("POST", "/v1/incidents").filter((c) => c.path === "/v1/incidents");
     const body = submit?.body as Record<string, unknown>;
     expect(Object.keys(body).sort()).toEqual(
-      ["category", "clientSubmissionId", "location", "photoKey", "severity", "title"].sort(),
+      [
+        "capturedAt",
+        "category",
+        "clientSubmissionId",
+        "location",
+        "photoKey",
+        "severity",
+        "title",
+      ].sort(),
     );
+    expect(String(body.capturedAt)).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(body).toMatchObject({
       severity: "HIGH",
       title: "Steam leak at P-301",

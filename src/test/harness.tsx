@@ -7,6 +7,9 @@ import { setClock, systemClock } from "@/lib/clock";
 import { draftStore } from "@/features/report";
 import { runSignOutCleanups } from "@/lib/session-hooks";
 import { queryClient } from "@/providers";
+import { memoryFiles, setOfflineFiles } from "@/lib/offline/files";
+import { outbox } from "@/lib/offline/outbox";
+import { forgetFloorPlanImages } from "@/lib/offline/floor-plans";
 import { PASSWORD, type FakeBackend } from "./fake-backend";
 
 export type View = Awaited<ReturnType<typeof renderRouter>>;
@@ -41,6 +44,9 @@ export async function launch(
 /** Reset every module-level singleton so journeys never leak into each other. */
 export async function cleanup() {
   authBridge.setToken(null);
+  outbox.unload();
+  forgetFloorPlanImages();
+  setOfflineFiles(memoryFiles());
   queryClient.clear();
   draftStore.reset();
   setClock(systemClock);

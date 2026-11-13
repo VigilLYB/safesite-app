@@ -8,6 +8,13 @@ import {
   type Incident,
   type TransitionEvent,
 } from "@/lib/api";
+import { isOnline } from "@/lib/offline/network";
+import {
+  isOfflineError,
+  mayHaveBeenSent,
+  queueIncidentEdit,
+  queueTransition,
+} from "@/lib/offline/queue-change";
 import { useAssignAction } from "@/features/actions";
 import {
   useClusterIncident,
@@ -49,23 +56,41 @@ export function useIncidentChanges(incident: Incident) {
   const [stale, setStale] = useState<StaleChange | null>(null);
   const [busy, setBusy] = useState(false);
 
+  /**
+   * `offline`: how to save this change on the device when there is no connection (only for
+   * changes that are safe to send later). Without it, an offline change fails as before.
+   */
   async function run(
     allowed: StaleChange["allowed"],
     exec: (version: number, current: Incident) => Promise<unknown>,
     base: Incident = incident,
+    offline?: (current: Incident, maybeSent: boolean) => Promise<void>,
   ): Promise<Outcome> {
     {
       setError(null);
       setBusy(true);
       try {
+        if (offline && !isOnline()) {
+          await offline(base, false);
+          return "ok";
+        }
         await exec(base.version, base);
         return "ok";
       } catch (caught) {
+        if (offline && isOfflineError(caught)) {
+          try {
+            await offline(base, mayHaveBeenSent(caught));
+            return "ok";
+          } catch {
+            setError(caught); // could not even save it on the device: show the connection error
+            return "error";
+          }
+        }
         if (isStaleVersion(caught)) {
           setStale({
             expected: base.version,
             allowed,
-            retry: (fresh) => run(allowed, exec, fresh),
+            retry: (fresh) => run(allowed, exec, fresh, offline),
           });
           return "stale";
         }
@@ -90,12 +115,21 @@ export function useIncidentChanges(incident: Incident) {
         (fresh) => fresh.permissions.transitions.includes(event),
         (version) =>
           transition.mutateAsync({ id: incident.id, event, expectedVersion: version, note }),
+        incident,
+        (current, maybeSent) => queueTransition(queryClient, current, event, note, { maybeSent }),
       ),
-    edit: (patch: Omit<EditIncidentInput, "expectedVersion">) =>
-      run(
+    edit: (patch: Omit<EditIncidentInput, "expectedVersion">) => {
+      const { photoKey, ...fields } = patch;
+      return run(
         (fresh) => fresh.permissions.canEdit,
         (version) => edit.mutateAsync({ id: incident.id, ...patch, expectedVersion: version }),
-      ),
+        incident,
+        // A new photo needs an upload, so a photo change cannot wait for later.
+        photoKey === undefined
+          ? (current, maybeSent) => queueIncidentEdit(queryClient, current, fields, { maybeSent })
+          : undefined,
+      );
+    },
     move: (target: { blueprintId: string; x: number; y: number }) =>
       run(
         (fresh) => fresh.permissions.canEdit,

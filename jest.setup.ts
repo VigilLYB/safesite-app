@@ -1,6 +1,7 @@
 // Reanimated / Gesture Handler have no native side under Jest. Reanimated itself is mapped to
 // src/test/reanimated-mock.js in the Jest config (so expo-router's test mocks resolve to it too).
 import "react-native-gesture-handler/jestSetup";
+import { memoryFiles, setOfflineFiles } from "@/lib/offline/files";
 
 // The live suites (npm run test:e2e) point this at the hosted API; unit and journey tests never do.
 process.env.EXPO_PUBLIC_API_BASE_URL ||= "https://api.test.invalid";
@@ -38,6 +39,11 @@ jest.mock("expo-audio", () => ({
   AudioQuality: { MEDIUM: 64 },
   setAudioModeAsync: jest.fn(),
 }));
+
+// Offline storage (outbox, saved reports, read cache) runs in memory: jest has no file system
+// module. The harness swaps in a fresh store for every journey.
+jest.mock("expo-file-system", () => ({}));
+beforeEach(() => setOfflineFiles(memoryFiles()));
 
 // Decorative loops (skeleton pulse) must not keep Jest alive; this also exercises the reduced-motion path.
 jest.mock("@/lib/use-reduced-motion", () => ({ useReducedMotion: () => true }));

@@ -419,6 +419,18 @@ export function createFakeBackend() {
           })
         : err(401, "UNAUTHORIZED", "Invalid credentials");
     }
+    if (method === "POST" && path === "/v1/auth/refresh") {
+      // Expired tokens (flags.expireTokens) are past the grace period too: sign in again.
+      const u = actorOf(`Bearer ${String(body?.accessToken)}`);
+      return u && u.isActive && !flags.expireTokens
+        ? json(200, {
+            accessToken: `tok-${u.id}`,
+            tokenType: "Bearer",
+            expiresAt: "2099-01-01T00:00:00Z",
+            user: u,
+          })
+        : err(401, "UNAUTHORIZED", "Session expired. Sign in again.");
+    }
     const actor = actorOf(auth);
     if (!actor || flags.expireTokens) return err(401, "UNAUTHORIZED", "Missing or invalid token");
     const staff = isStaff(actor.role);

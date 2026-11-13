@@ -14,6 +14,14 @@ export interface IncidentHeaderProps {
   retrying: boolean;
 }
 
+/** Saved on the device more than 5 minutes before the server got it: worth saying when it was seen. */
+const SENT_LATER_MS = 5 * 60_000;
+export function sentLater(capturedAt: string | null | undefined, createdAt: string): boolean {
+  if (!capturedAt) return false;
+  const gap = new Date(createdAt).getTime() - new Date(capturedAt).getTime();
+  return Number.isFinite(gap) && gap > SENT_LATER_MS;
+}
+
 /** Title, reference, status, severity, reporter, times, and the banners that explain the state. */
 export function IncidentHeader({
   incident,
@@ -41,6 +49,11 @@ export function IncidentHeader({
             Reported by {incident.reporter.fullName} · {formatDateTime(incident.createdAt)} · Last
             change: {incident.lastChange.label}, {formatDateTime(incident.lastChange.at)}
           </Text>
+          {sentLater(incident.capturedAt, incident.createdAt) ? (
+            <Text variant="caption" tone="muted" testID="seen-at">
+              Seen {formatDateTime(incident.capturedAt)}: saved offline and sent later
+            </Text>
+          ) : null}
         </Stack>
       </Card>
 
