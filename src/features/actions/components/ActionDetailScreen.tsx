@@ -107,6 +107,7 @@ export function ActionDetailScreen() {
               <UserPicker
                 label="Change assignee"
                 anyLabel="Unassigned"
+                excludeRoles={["MANAGER"]}
                 value={action.assignee?.id ?? null}
                 onChange={(assigneeId) => {
                   if (assigneeId !== (action.assignee?.id ?? null)) {

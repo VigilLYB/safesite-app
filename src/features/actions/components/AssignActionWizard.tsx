@@ -177,6 +177,7 @@ function Wizard({ onClose, onSubmit, pending, error }: Omit<AssignActionWizardPr
             <UserPicker
               label="Assign to"
               anyLabel="Unassigned"
+              excludeRoles={["MANAGER"]}
               value={form.assigneeId || null}
               onChange={(id) => patch({ assigneeId: id ?? "" })}
               helper="Unassigned actions stay open."
