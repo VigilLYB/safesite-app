@@ -842,7 +842,7 @@ export function createFakeBackend() {
         addNode(inc, "RESOLVED", "Resolved", null, ["status"]);
       };
       if (method === "PUT" && sub === "/assignee") {
-        if (!staff) return forbid();
+        if (actor.role !== "MANAGER") return forbid();
         const next = (body?.assigneeId as string | null | undefined) ?? null;
         const target = next ? users.find((u) => u.id === next && u.isActive) : null;
         if (next && !target)

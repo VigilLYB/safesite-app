@@ -14,6 +14,8 @@ export interface UserPickerProps {
   onChange: (id: string | null) => void;
   /** Only users with this role. */
   role?: Role | undefined;
+  /** Hide users with these roles from the list (e.g. a corrective action isn't assigned to a manager). */
+  excludeRoles?: Role[] | undefined;
   /** Text for the "no filter / unassigned" choice. Omit to force a choice. */
   anyLabel?: string | undefined;
   /** Show each person's number of open (live) actions next to their name. */
@@ -31,6 +33,7 @@ export function UserPicker({
   value,
   onChange,
   role,
+  excludeRoles,
   anyLabel,
   showOpenActions = false,
   helper,
@@ -40,15 +43,17 @@ export function UserPicker({
   const staff = isStaff(user?.role);
   const query = useUsers(role, staff);
   const options = useMemo(() => {
-    const users = (query.data ?? []).map((u) => ({
-      value: u.id,
-      label: u.fullName,
-      description: roleLabel[u.role],
-      count: showOpenActions ? u.openActionCount : undefined,
-      countLabel: "open actions",
-    }));
+    const users = (query.data ?? [])
+      .filter((u) => !excludeRoles?.includes(u.role))
+      .map((u) => ({
+        value: u.id,
+        label: u.fullName,
+        description: roleLabel[u.role],
+        count: showOpenActions ? u.openActionCount : undefined,
+        countLabel: "open actions",
+      }));
     return anyLabel ? [{ value: ANY, label: anyLabel }, ...users] : users;
-  }, [query.data, anyLabel, showOpenActions]);
+  }, [query.data, excludeRoles, anyLabel, showOpenActions]);
 
   if (!staff) return null;
   return (

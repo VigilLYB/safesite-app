@@ -440,3 +440,35 @@ describe("Journey: manager administers people and plans", () => {
     expect(await view.findByText("Area name already used on this blueprint")).toBeTruthy();
   });
 });
+
+describe("Journey: reassigning an action", () => {
+  const labels = (rec: { nodes: { label: string }[] }) => rec.nodes.map((n) => n.label);
+
+  it("a manager changes the assignee from the action page; the report's history records it", async () => {
+    const rec = be.seedIncident({ reporter: wid(), title: "Valve leak", status: "APPROVED" });
+    const view = await launch(be, { as: M, url: `/incidents/${rec.id}` });
+    await press(view, "action-assign");
+    await press(view, "assign-next");
+    await fireEvent.changeText(await view.findByTestId("assign-title"), "Isolate the line");
+    await press(view, "assign-next");
+    await press(view, "assign-next");
+    await press(view, "assign-confirm");
+    await waitFor(() => expect(be.actions.size).toBe(1));
+    const [action] = [...be.actions.values()];
+    await cleanup();
+
+    const detail = await launch(be, { as: M, url: `/actions/${action!.id}` });
+    await press(detail, "reassign-picker");
+    // Only supervisors are offered: workers and managers are not.
+    expect(detail.queryByText("Sana Shaikh")).toBeNull();
+    const options = await detail.findAllByRole("radio");
+    expect(options).toHaveLength(2); // Unassigned + the one supervisor
+    await fireEvent.press(options[1]!);
+    await waitFor(() => expect(be.called("PUT", "/assignee")).toHaveLength(1));
+    const anita = be.userByEmail("supervisor@plantx.demo")!.id;
+    expect(be.called("PUT", "/assignee")[0]?.body).toEqual({ assigneeId: anita });
+    expect(action!.assigneeId).toBe(anita);
+    expect(labels(rec).at(-1)).toBe("Reassigned Action");
+    expect(await detail.findByLabelText("Assignee: Anita Desai")).toBeTruthy();
+  });
+});

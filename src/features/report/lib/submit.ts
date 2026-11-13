@@ -58,9 +58,11 @@ export class SavedOnDevice extends Error {
 
 /**
  * Uploads (reusing fresh keys), then submits. The caller owns `clientSubmissionId` and passes the
- * same one on every retry. Ambiguous failures are resent twice with backoff; after that the
- * report stays a draft on the device (`SavedOnDevice`). A missing upload is re-uploaded and the
- * same body is resent.
+ * same one on every retry. Ambiguous failures - of the upload or of the submit itself, e.g. no
+ * signal - are resent twice with backoff; after that the report stays a draft on the device
+ * (`SavedOnDevice`). A missing upload is re-uploaded and the same body is resent. The upload runs
+ * inside the same retry loop as the submit: with no network at all, it never gets as far as a
+ * submit attempt, so it must be covered by the same recovery path, not skip it.
  */
 export async function submitWithRecovery(args: {
   photo: FileToSend | null;
@@ -83,12 +85,14 @@ export async function submitWithRecovery(args: {
     return key;
   };
 
-  let photoKey = await keyFor("photo", photo);
-  let audioKey = await keyFor("audio", audio);
+  let photoKey: string | undefined;
+  let audioKey: string | undefined;
   let reuploaded = false;
 
   for (let attempt = 0; ; attempt += 1) {
     try {
+      photoKey = await keyFor("photo", photo);
+      audioKey = await keyFor("audio", audio);
       return await deps.submit(build({ photoKey, audioKey }));
     } catch (error) {
       const missing = missingUploadKind(error);

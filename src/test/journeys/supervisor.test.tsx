@@ -273,7 +273,7 @@ describe("Journey: supervisor assigns a corrective action", () => {
 });
 
 describe("Journey: reassigning an action", () => {
-  it("staff change the assignee from the action page; the report's history records it", async () => {
+  it("is manager-only: a supervisor can assign an action but not reassign it", async () => {
     const rec = be.seedIncident({ reporter: wid(), title: "Valve leak", status: "APPROVED" });
     const view = await launch(be, { as: S, url: `/incidents/${rec.id}` });
     await press(view, "action-assign");
@@ -287,23 +287,13 @@ describe("Journey: reassigning an action", () => {
     await cleanup();
 
     const detail = await launch(be, { as: S, url: `/actions/${action!.id}` });
-    await fireEvent.press(await detail.findByTestId("reassign-picker"));
-    // Only supervisors can be picked.
-    expect(detail.queryByText("Sana Shaikh")).toBeNull();
-    const options = await detail.findAllByRole("radio");
-    expect(options).toHaveLength(2); // Unassigned + the one supervisor
-    await fireEvent.press(options[1]!);
-    await waitFor(() => expect(be.called("PUT", "/assignee")).toHaveLength(1));
-    const anita = be.userByEmail("supervisor@plantx.demo")!.id;
-    expect(be.called("PUT", "/assignee")[0]?.body).toEqual({ assigneeId: anita });
-    expect(action!.assigneeId).toBe(anita);
-    expect(labels(rec).at(-1)).toBe("Reassigned Action");
-    expect(await detail.findByLabelText("Assignee: Anita Desai")).toBeTruthy();
-    await cleanup();
+    await detail.findByTestId("action-detail");
+    expect(detail.queryByTestId("reassign")).toBeNull(); // supervisors can't reassign
 
+    await cleanup();
     const worker = await launch(be, { as: "worker@plantx.demo", url: `/actions/${action!.id}` });
     await worker.findByTestId("action-detail");
-    expect(worker.queryByTestId("reassign")).toBeNull(); // workers can't reassign
+    expect(worker.queryByTestId("reassign")).toBeNull(); // workers can't reassign either
   });
 });
 

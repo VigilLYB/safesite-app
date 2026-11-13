@@ -10,7 +10,7 @@ import {
 } from "../lib/build-alerts";
 import { isSeenLoaded, loadSeen, setSeen, useSeenAlerts } from "../lib/seen-store";
 
-const REFRESH_MS = 60_000;
+const REFRESH_MS = 3_000;
 /** Detail calls are bounded: only a worker's few newest changed reports are opened for alerts. */
 const WORKER_DETAIL_LIMIT = 5;
 
@@ -44,7 +44,7 @@ async function fetchFeed(userId: string, role: Role, signal?: AbortSignal): Prom
   });
 }
 
-/** The alerts feed for the signed-in person, refreshed every minute, with unread tracking. */
+/** The alerts feed for the signed-in person, refreshed every few seconds, with unread tracking. */
 export function useAlerts(user: { id: string; role: Role } | null) {
   const userId = user?.id;
   const seen = useSeenAlerts(userId);
@@ -58,7 +58,7 @@ export function useAlerts(user: { id: string; role: Role } | null) {
     enabled: Boolean(user),
     refetchInterval: REFRESH_MS,
     refetchIntervalInBackground: false,
-    staleTime: 20_000,
+    staleTime: REFRESH_MS,
   });
 
   const alerts = useMemo(() => query.data ?? [], [query.data]);

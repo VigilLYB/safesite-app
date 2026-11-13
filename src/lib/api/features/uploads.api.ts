@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import { File, UploadType } from "expo-file-system";
 import { ApiError } from "../errors";
 import { request } from "../client";
 import { endpoints } from "../registry";
@@ -25,10 +26,12 @@ const unreadable = () =>
 /**
  * On a device, a camera or recorder file is uploaded natively from its path. React Native's
  * `fetch` with a Blob body does not send the bytes on Android (S3 stored a 14-byte placeholder
- * instead of the photo), so device files never go through it.
+ * instead of the photo), so device files never go through it. A static import, not a dynamic one:
+ * under Expo Go, a dynamic import can fetch its chunk over the same wifi link as the Metro dev
+ * server, so testing "offline" by turning wifi off also broke this import and got misreported as
+ * an unreadable file, nothing to do with the photo or the network call this is actually testing.
  */
 async function nativeFileSource(uri: string): Promise<UploadSource> {
-  const { File, UploadType } = await import("expo-file-system");
   const file = new File(uri);
   if (!file.exists) throw unreadable();
   return {
