@@ -37,7 +37,10 @@ describe("Journey: manager analytics", () => {
     be.seedIncident({ reporter: wid(), title: "x" });
     const view = await launch(be, { as: M, url: "/analytics" });
     await view.findByTestId("kpi-tiles");
-    await fireEvent.press(await view.findByLabelText("Night 22:00–06:00"));
+    expect(view.queryByTestId("analytics-filter-panel")).toBeNull(); // options start hidden
+    await fireEvent.press(await view.findByTestId("toggle-analytics-filters"));
+    await fireEvent.press(await view.findByTestId("an-shift"));
+    await fireEvent.press(await view.findByText("Night"));
     await waitFor(() =>
       expect(be.called("GET", "/analytics/summary").some((c) => c.query.get("shift") === "C")).toBe(
         true,

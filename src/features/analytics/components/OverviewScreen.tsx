@@ -3,7 +3,7 @@ import type { AnalyticsSummary } from "@/lib/api";
 import { formatCount, formatDate, formatDuration } from "@/lib/format";
 import { shiftLabel, STATUS_ORDER } from "@/lib/labels";
 import { severityTokens } from "@/lib/theme";
-import { Card, Stack, Text } from "@/components/ui";
+import { Card, Grid, Stack, Text } from "@/components/ui";
 import { statusLabel, SEVERITIES, severityLabel } from "@/components/domain";
 import { EmptyState, ErrorState, TileSkeleton } from "@/components/feedback";
 import { useAnalyticsSummary } from "../hooks/useAnalytics";
@@ -22,16 +22,16 @@ function Tiles({ data }: { data: AnalyticsSummary }) {
     ["Avg time to close", formatDuration(data.actions.avgHoursToClose)],
   ] as const;
   return (
-    <Stack gap={3} testID="kpi-tiles">
+    <Grid columns={2} gap={3} testID="kpi-tiles">
       {tiles.map(([label, value]) => (
-        <Card key={label} testID={`kpi-${label}`}>
+        <Card key={label} fill testID={`kpi-${label}`}>
           <Text variant="caption" tone="muted">
             {label}
           </Text>
           <Text variant="kpi">{value}</Text>
         </Card>
       ))}
-    </Stack>
+    </Grid>
   );
 }
 
@@ -70,40 +70,42 @@ export function OverviewContent({ state, filters }: AnalyticsContentProps) {
             {data.timezone})
           </Text>
           <Tiles data={data} />
-          <Breakdown title="By status" rows={statusRows} testID="by-status" />
-          <Breakdown
-            title="By severity"
-            testID="by-severity"
-            rows={fillBuckets(SEVERITIES, data.bySeverity).map((row) => ({
-              key: row.key,
-              label: severityLabel[row.key as keyof typeof severityLabel],
-              count: row.count,
-              color: severityTokens[row.key as keyof typeof severityTokens].fill,
-            }))}
-          />
-          <Breakdown
-            title="By shift"
-            testID="by-shift"
-            rows={(["A", "B", "C"] as const).map((shift) => {
-              const found = data.byShift.find((b) => b.key === shift);
-              return {
-                key: shift,
-                label: shiftLabel[shift],
-                count: found?.count ?? 0,
-                detail: `Risk score ${formatCount(found?.score ?? 0)}`,
-              };
-            })}
-          />
-          <Breakdown
-            title="Top areas"
-            testID="top-areas"
-            rows={data.topAreas.map((area) => ({
-              key: area.key,
-              label: area.key === "Unpinned" ? "Unpinned" : area.key,
-              count: area.count,
-              detail: `Risk score ${formatCount(area.score)}`,
-            }))}
-          />
+          <Grid columns={2} gap={3}>
+            <Breakdown title="By status" rows={statusRows} testID="by-status" />
+            <Breakdown
+              title="By severity"
+              testID="by-severity"
+              rows={fillBuckets(SEVERITIES, data.bySeverity).map((row) => ({
+                key: row.key,
+                label: severityLabel[row.key as keyof typeof severityLabel],
+                count: row.count,
+                color: severityTokens[row.key as keyof typeof severityTokens].fill,
+              }))}
+            />
+            <Breakdown
+              title="By shift"
+              testID="by-shift"
+              rows={(["A", "B", "C"] as const).map((shift) => {
+                const found = data.byShift.find((b) => b.key === shift);
+                return {
+                  key: shift,
+                  label: shiftLabel[shift],
+                  count: found?.count ?? 0,
+                  detail: `Risk score ${formatCount(found?.score ?? 0)}`,
+                };
+              })}
+            />
+            <Breakdown
+              title="Top areas"
+              testID="top-areas"
+              rows={data.topAreas.map((area) => ({
+                key: area.key,
+                label: area.key,
+                count: area.count,
+                detail: `Risk score ${formatCount(area.score)}`,
+              }))}
+            />
+          </Grid>
           <Card testID="follow-through">
             <Stack gap={2}>
               <Text variant="heading" accessibilityRole="header">

@@ -56,6 +56,22 @@ describe("DateRangeField", () => {
     expect(onChange).toHaveBeenLastCalledWith({});
   });
 
+  it("From and To boxes pick which end the next tapped day fills", async () => {
+    const onChange = await setup({ fromDay: "2026-11-01", toDay: "2026-11-05" });
+    await fireEvent.press(screen.getByTestId("range-to"));
+    await fireEvent.press(screen.getByTestId("day-2026-11-09"));
+    await fireEvent.press(screen.getByTestId("range-apply"));
+    expect(onChange).toHaveBeenLastCalledWith({ fromDay: "2026-11-01", toDay: "2026-11-09" });
+  });
+
+  it("only a To day becomes a one-day range", async () => {
+    const onChange = await setup();
+    await fireEvent.press(screen.getByTestId("range-to"));
+    await fireEvent.press(screen.getByTestId("day-2026-11-07"));
+    await fireEvent.press(screen.getByTestId("range-apply"));
+    expect(onChange).toHaveBeenCalledWith({ fromDay: "2026-11-07", toDay: "2026-11-07" });
+  });
+
   it("days after today can't be chosen", async () => {
     await setup();
     expect(screen.getByTestId("day-2026-11-13").props.accessibilityState?.disabled).toBe(true);

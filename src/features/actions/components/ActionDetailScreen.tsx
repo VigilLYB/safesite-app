@@ -3,7 +3,7 @@ import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { isApiError } from "@/lib/api";
 import { displayTitle, formatDateTime, formatDate } from "@/lib/format";
 import { actionStatusLabel, actionTypeLabel } from "@/lib/labels";
-import { canProgressAction, nextMilestoneId } from "@/lib/permissions";
+import { canProgressAction, canReassignAction, nextMilestoneId } from "@/lib/permissions";
 import { isUuid } from "@/lib/validation";
 import {
   Badge,
@@ -27,7 +27,13 @@ import {
 } from "@/components/feedback";
 import { SeverityBadge, StatusPill } from "@/components/domain";
 import { useSession } from "@/features/auth";
-import { useAction, useCompleteAction, useCompleteMilestone } from "../hooks/useActions";
+import { UserPicker } from "@/features/users";
+import {
+  useAction,
+  useCompleteAction,
+  useCompleteMilestone,
+  useReassignAction,
+} from "../hooks/useActions";
 import { progressLabel } from "./ActionCard";
 
 /** Action detail (guide §4.7): milestones in order; only the assignee or staff can progress. */
@@ -39,11 +45,13 @@ export function ActionDetailScreen() {
   const query = useAction(actionId);
   const milestone = useCompleteMilestone();
   const complete = useCompleteAction();
+  const reassign = useReassignAction();
   const [confirm, setConfirm] = useState<"last" | "oneoff" | null>(null);
 
   const back = () => (router.canGoBack() ? router.back() : router.replace("/actions" as Href));
   const action = query.data;
   const canProgress = action ? canProgressAction(user, action) : false;
+  const canReassign = action ? canReassignAction(user, action) : false;
   const next = action ? nextMilestoneId(action) : null;
   const milestones = [...(action?.milestones ?? [])].sort((a, b) => a.seq - b.seq);
   const remaining = milestones.filter((m) => !m.completedAt).length;
@@ -94,6 +102,25 @@ export function ActionDetailScreen() {
               { label: "Completed", value: formatDateTime(action.completedAt) },
             ]}
           />
+          {canReassign ? (
+            <Stack gap={2} testID="reassign">
+              <UserPicker
+                label="Change assignee"
+                anyLabel="Unassigned"
+                value={action.assignee?.id ?? null}
+                onChange={(assigneeId) => {
+                  if (assigneeId !== (action.assignee?.id ?? null)) {
+                    reassign.mutate({ actionId: action.id, assigneeId });
+                  }
+                }}
+                helper={
+                  reassign.isPending ? "Saving…" : "The change is recorded in the report's history."
+                }
+                testID="reassign-picker"
+              />
+              <MutationError error={reassign.error} />
+            </Stack>
+          ) : null}
           <Card
             onPress={() => router.push(`/incidents/${action.incident.id}` as Href)}
             accessibilityLabel="Open the report"

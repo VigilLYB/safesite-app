@@ -11,6 +11,8 @@ export interface CardProps {
   padded?: boolean | undefined;
   onPress?: () => void;
   selected?: boolean | undefined;
+  /** Stretch to the parent's height, e.g. so cards in one Grid row line up. */
+  fill?: boolean | undefined;
   accessibilityLabel?: string | undefined;
   testID?: string | undefined;
 }
@@ -25,6 +27,7 @@ export function Card({
   padded = true,
   onPress,
   selected = false,
+  fill = false,
   accessibilityLabel,
   testID,
 }: CardProps) {
@@ -36,6 +39,7 @@ export function Card({
     selected ? { borderColor: palette.grey400 } : {},
     padded ? styles.padded : {},
     edgeColor ? { borderLeftWidth: 3, borderLeftColor: edgeColor } : {},
+    fill ? { flex: 1 } : {},
   ];
 
   if (!onPress) {

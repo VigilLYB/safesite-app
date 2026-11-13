@@ -8,6 +8,8 @@ export { Screen } from "./layout/Screen";
 export type { ScreenProps } from "./layout/Screen";
 export { ScreenHeader } from "./layout/ScreenHeader";
 export { Section } from "./layout/Section";
+export { Grid } from "./layout/Grid";
+export type { GridProps } from "./layout/Grid";
 export { Row, Stack } from "./layout/Stack";
 export { Text } from "./Text";
 export type { TextProps, TextTone } from "./Text";

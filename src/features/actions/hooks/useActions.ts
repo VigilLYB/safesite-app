@@ -87,5 +87,11 @@ export const useCompleteMilestone = () =>
     actionsApi.completeMilestone(v.actionId, v.milestoneId),
   );
 
+/** Staff move a live action to someone else; the report's timeline gains a node, so refresh it. */
+export const useReassignAction = () =>
+  useProgress((v: { actionId: string; assigneeId: string | null }) =>
+    actionsApi.reassign(v.actionId, v.assigneeId),
+  );
+
 export const useCompleteAction = () =>
   useProgress((actionId: string) => actionsApi.complete(actionId));

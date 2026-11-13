@@ -55,6 +55,14 @@ export const actionsApi = {
     ).items,
   get: (id: string, signal?: AbortSignal) =>
     request({ endpoint: endpoints.action, params: { id }, schema: actionSchema, signal }),
+  /** `null` leaves the action unassigned. Staff only; live actions only (422 otherwise). */
+  reassign: (id: string, assigneeId: string | null) =>
+    request({
+      endpoint: endpoints.actionReassign,
+      params: { id },
+      body: { assigneeId },
+      schema: actionSchema,
+    }),
   completeMilestone: (id: string, milestoneId: string) =>
     request({
       endpoint: endpoints.milestoneComplete,

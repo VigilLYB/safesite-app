@@ -111,7 +111,7 @@ export function IncidentsScreen() {
               !staff && state.tab === "active"
                 ? "You haven't reported anything yet"
                 : state.tab === "triage"
-                  ? "Nothing waiting for triage"
+                  ? "No new incidents"
                   : "No reports here"
             }
             actionLabel={!staff && state.tab === "active" ? "Report a hazard" : undefined}

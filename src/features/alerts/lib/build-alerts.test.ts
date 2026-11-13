@@ -127,7 +127,7 @@ describe("worker alerts", () => {
 });
 
 describe("staff alerts", () => {
-  it("reports waiting for triage, with who reported them", () => {
+  it("new incidents waiting for review, with who reported them", () => {
     const [a] = buildStaffAlerts({
       role: "SUPERVISOR",
       waiting: [summary()],

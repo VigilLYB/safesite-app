@@ -22,16 +22,17 @@ export function ActionCard({ action, onPress, onOpenIncident }: ActionCardProps)
   return (
     <Card
       onPress={() => onPress(action)}
-      accessibilityLabel={`${action.title}. ${actionStatusLabel[action.status]}.${overdue ? " Overdue." : ""}`}
+      accessibilityLabel={`${action.title}. ${action.incident.severity.toLowerCase()} severity. ${actionStatusLabel[action.status]}.${overdue ? " Overdue." : ""}`}
       testID={`action-${action.id}`}
     >
       <Row justify="space-between" gap={2}>
         <Text variant="heading" style={{ flex: 1 }}>
           {action.title}
         </Text>
-        {overdue ? <Badge label="Overdue" tone="inverse" icon="warn" /> : null}
+        <SeverityBadge severity={action.incident.severity} />
       </Row>
       <Row gap={2} wrap>
+        {overdue ? <Badge label="Overdue" tone="inverse" icon="warn" /> : null}
         <Badge
           label={actionStatusLabel[action.status]}
           tone={action.status === "DONE" ? "inverse" : "neutral"}
@@ -48,7 +49,6 @@ export function ActionCard({ action, onPress, onOpenIncident }: ActionCardProps)
         Due {formatDate(action.dueAt)} · Created {formatDate(action.createdAt)}
       </Text>
       <Row gap={2} wrap>
-        <SeverityBadge severity={action.incident.severity} size="sm" />
         <StatusPill status={action.incident.status} />
         <Text variant="caption" tone="muted">
           {action.incident.areaName ?? "—"}

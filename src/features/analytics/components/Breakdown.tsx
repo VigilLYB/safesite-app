@@ -25,7 +25,7 @@ export function Breakdown({
 }) {
   const max = Math.max(1, ...rows.map((row) => row.count));
   return (
-    <Card testID={testID}>
+    <Card fill testID={testID}>
       <Stack gap={3}>
         <Text variant="heading" accessibilityRole="header">
           {title}

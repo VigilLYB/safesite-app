@@ -175,11 +175,11 @@ describe("Journey: alerts for a worker", () => {
 });
 
 describe("Journey: alerts for staff", () => {
-  it("a supervisor is told about reports waiting for triage and overdue actions", async () => {
+  it("a supervisor is told about new incidents waiting for review and overdue actions", async () => {
     be.seedIncident({ reporter: wid(), title: "Fresh leak" });
     seedAssignedAction(wid(), true);
     const view = await phone("supervisor@plantx.demo", "/alerts");
-    expect(await view.findByText("Report waiting for triage")).toBeTruthy();
+    expect(await view.findByText("New incident waiting for review")).toBeTruthy();
     expect(await view.findByText("Action overdue")).toBeTruthy();
     expect(view.queryByText("Ready to close")).toBeNull(); // managers only
     expect(
@@ -193,7 +193,7 @@ describe("Journey: alerts for staff", () => {
     be.seedIncident({ reporter: wid(), title: "Fixed valve", status: "RESOLVED" });
     be.seedIncident({ reporter: wid(), title: "Marker" }); // proves the feed loaded
     const view = await phone("supervisor@plantx.demo", "/alerts");
-    await view.findByText("Report waiting for triage");
+    await view.findByText("New incident waiting for review");
     expect(view.queryByText("Ready to close")).toBeNull();
     expect(
       be.called("GET", "/v1/incidents").some((c) => c.query.get("status") === "RESOLVED"),
@@ -212,7 +212,7 @@ describe("Journey: alerts for staff", () => {
   it("staff alerts never fetch a detail per report (no per-row requests)", async () => {
     for (let i = 0; i < 4; i++) be.seedIncident({ reporter: wid(), title: `r${i}` });
     const view = await phone("supervisor@plantx.demo", "/alerts");
-    await view.findAllByText("Report waiting for triage");
+    await view.findAllByText("New incident waiting for review");
     expect(be.calls.filter((c) => /\/v1\/incidents\/[0-9a-f-]{36}$/.test(c.path))).toHaveLength(0);
   });
 });

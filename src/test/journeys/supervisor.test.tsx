@@ -15,7 +15,7 @@ const pick = async (view: View, testID: string, optionText: string) => {
 };
 
 describe("Journey: supervisor triage", () => {
-  it("lands on Triage: OPEN only, duplicates hidden, server-side", async () => {
+  it("lands on New Incidents: OPEN only, duplicates hidden, server-side", async () => {
     be.seedIncident({ reporter: wid(), title: "Fresh" });
     be.seedIncident({ reporter: wid(), title: "Approved already", status: "APPROVED" });
     const view = await launch(be, { as: S, url: "/incidents" });
@@ -269,6 +269,36 @@ describe("Journey: supervisor assigns a corrective action", () => {
     await waitFor(() => expect(rec.status).toBe("ACTION_ASSIGNED"));
     // An action is running: Assign is gone (not offered twice).
     await waitFor(() => expect(view.queryByTestId("action-assign")).toBeNull());
+  });
+});
+
+describe("Journey: reassigning an action", () => {
+  it("staff change the assignee from the action page; the report's history records it", async () => {
+    const rec = be.seedIncident({ reporter: wid(), title: "Valve leak", status: "APPROVED" });
+    const view = await launch(be, { as: S, url: `/incidents/${rec.id}` });
+    await press(view, "action-assign");
+    await press(view, "assign-next");
+    await fireEvent.changeText(await view.findByTestId("assign-title"), "Isolate the line");
+    await press(view, "assign-next");
+    await press(view, "assign-next");
+    await press(view, "assign-confirm");
+    await waitFor(() => expect(be.actions.size).toBe(1));
+    const [action] = [...be.actions.values()];
+    await cleanup();
+
+    const detail = await launch(be, { as: S, url: `/actions/${action!.id}` });
+    await pick(detail, "reassign-picker", "Sana Shaikh");
+    await waitFor(() => expect(be.called("PUT", "/assignee")).toHaveLength(1));
+    const sana = be.userByEmail("contractor@plantx.demo")!.id;
+    expect(be.called("PUT", "/assignee")[0]?.body).toEqual({ assigneeId: sana });
+    expect(action!.assigneeId).toBe(sana);
+    expect(labels(rec).at(-1)).toBe("Reassigned Action");
+    expect(await detail.findByLabelText("Assignee: Sana Shaikh")).toBeTruthy();
+    await cleanup();
+
+    const worker = await launch(be, { as: "worker@plantx.demo", url: `/actions/${action!.id}` });
+    await worker.findByTestId("action-detail");
+    expect(worker.queryByTestId("reassign")).toBeNull(); // workers can't reassign
   });
 });
 

@@ -41,6 +41,7 @@ export const endpoints = {
   actionAssign: e("POST", "/v1/incidents/{id}/actions"),
   actions: e("GET", "/v1/actions"),
   action: e("GET", "/v1/actions/{id}"),
+  actionReassign: e("PUT", "/v1/actions/{id}/assignee"),
   milestoneComplete: e("POST", "/v1/actions/{id}/milestones/{milestoneId}/complete"),
   actionComplete: e("POST", "/v1/actions/{id}/complete"),
   ppeScanRun: e("POST", "/v1/incidents/{id}/ppe-scans", 30_000),

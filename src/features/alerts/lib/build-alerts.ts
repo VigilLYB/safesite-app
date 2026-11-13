@@ -97,7 +97,7 @@ export function buildStaffAlerts(input: {
   const alerts: AppAlert[] = input.waiting.map((report) => ({
     id: `new-report:${report.id}`,
     kind: "new-report",
-    title: "Report waiting for triage",
+    title: "New incident waiting for review",
     body: `${displayTitle(report)} · ${report.reporter.fullName}`,
     at: report.createdAt,
     href: `/incidents/${report.id}`,
