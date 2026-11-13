@@ -1,9 +1,10 @@
 import { Fragment, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { palette, space } from "@/lib/theme";
+import { palette, space, touch } from "@/lib/theme";
 import { IconButton } from "../actions";
 import { Icon } from "../icons";
 import { Text } from "../Text";
+import { useHeaderExtra } from "./HeaderExtra";
 
 export interface Crumb {
   label: string;
@@ -34,6 +35,9 @@ export function ScreenHeader({
   actions,
   titleTestID,
 }: ScreenHeaderProps) {
+  // The shell's shared control (e.g. the manager's Report button), shown on every page.
+  const extra = useHeaderExtra();
+  const hasActions = Boolean(actions) || Boolean(extra);
   return (
     <View style={styles.row}>
       {onBack ? <IconButton icon="back" label="Back" onPress={onBack} /> : null}
@@ -68,16 +72,30 @@ export function ScreenHeader({
             {eyebrow}
           </Text>
         ) : null}
-        <Text variant="title" accessibilityRole="header" numberOfLines={2} testID={titleTestID}>
-          {title}
-        </Text>
+        {/* Actions share the title's own line, so they sit level with the heading. */}
+        <View style={[styles.titleRow, hasActions && styles.titleRowWithActions]}>
+          <Text
+            variant="title"
+            accessibilityRole="header"
+            numberOfLines={2}
+            testID={titleTestID}
+            style={styles.titleText}
+          >
+            {title}
+          </Text>
+          {hasActions ? (
+            <View style={styles.actions} testID="header-actions">
+              {actions}
+              {extra}
+            </View>
+          ) : null}
+        </View>
         {subtitle ? (
           <Text variant="body" tone="muted">
             {subtitle}
           </Text>
         ) : null}
       </View>
-      {actions ? <View style={styles.actions}>{actions}</View> : null}
     </View>
   );
 }
@@ -88,5 +106,8 @@ const styles = StyleSheet.create({
   trail: { flexDirection: "row", alignItems: "center", gap: 2, flexWrap: "nowrap" },
   crumbPress: { flexShrink: 1 },
   crumb: { flexShrink: 1, maxWidth: 160 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: space[2] },
+  titleRowWithActions: { minHeight: touch.desk },
+  titleText: { flex: 1 },
   actions: { flexDirection: "row", gap: space[2], alignItems: "center" },
 });

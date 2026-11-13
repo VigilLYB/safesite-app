@@ -12,7 +12,7 @@ export const WORKER_TABS = [
 ] as const;
 
 export const STAFF_TABS = [
-  { value: "triage", label: "Triage", status: "OPEN" },
+  { value: "triage", label: "New Incidents", status: "OPEN" },
   { value: "validated", label: "Validated", status: "VALIDATED" },
   { value: "needs-action", label: "Needs action", status: "APPROVED" },
   { value: "in-progress", label: "In progress", status: "ACTION_ASSIGNED" },
@@ -41,7 +41,7 @@ export interface ListState {
   /** Plant-time calendar days, "2026-11-12". */
   fromDay?: string | undefined;
   toDay?: string | undefined;
-  /** Explicit choice; undefined means "the tab's default" (Triage hides duplicates). */
+  /** Explicit choice; undefined means "the tab's default" (New Incidents hides duplicates). */
   rootsOnly?: boolean | undefined;
   mine?: boolean | undefined;
 }

@@ -11,7 +11,7 @@ export function useIncidentList(filters: IncidentFilters, options: { pollMs?: nu
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.pageInfo.nextCursor ?? undefined,
     placeholderData: (previous) => previous,
-    // Guide §2.5: only the Triage tab polls, and not while the tab is in the background.
+    // Guide §2.5: only the New Incidents tab polls, and not while the tab is in the background.
     refetchInterval: options.pollMs ?? false,
     refetchIntervalInBackground: false,
   });

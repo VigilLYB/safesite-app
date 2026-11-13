@@ -14,9 +14,6 @@ export const KNOWN_FIELDS = [
 
 export type FieldValue = string | number | boolean | null;
 
-const knownKeys = new Set<string>(KNOWN_FIELDS.map((field) => field.key));
-export const isKnownField = (key: string): boolean => knownKeys.has(key);
-
 export function labelFor(key: string): string {
   return KNOWN_FIELDS.find((field) => field.key === key)?.label ?? key;
 }

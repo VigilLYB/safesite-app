@@ -25,6 +25,14 @@ export function canProgressAction(
   return isStaff(user.role) || action.assignee?.id === user.id;
 }
 
+/** Staff can move a live action to someone else (or to nobody). The server enforces it again. */
+export function canReassignAction(
+  user: Pick<User, "role"> | null,
+  action: Pick<Action, "status">,
+): boolean {
+  return isStaff(user?.role) && (action.status === "OPEN" || action.status === "IN_PROGRESS");
+}
+
 /** Retry transcription has no permission flag: limit it to the reporter and staff. */
 export function canRetryTranscription(
   user: Pick<User, "id" | "role"> | null,

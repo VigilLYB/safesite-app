@@ -56,36 +56,53 @@ function monthGrid(year: number, month: number): (string | null)[] {
   ];
 }
 
+type End = "from" | "to";
+
 /**
  * A compact date-range filter: one calendar button that shows the current range, opening a small
- * month calendar (like Gmail's). Tap a first day, then a last day; quick presets, Clear and Apply.
- * Days are plant-time calendar days; the future is not selectable.
+ * month calendar (like Gmail's). From and To boxes sit on top: tap one, then a day to fill it
+ * (picking From moves on to To). Quick presets, Clear and Apply. Days are plant-time calendar
+ * days; the future is not selectable.
  */
 export function DateRangeField({ label, value, onChange, today, testID }: DateRangeFieldProps) {
   const { handlers, ringStyle } = useFocusRing();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DayRangeValue>(value);
+  const [editing, setEditing] = useState<End>("from");
   const [view, setView] = useState(() => parts(value.toDay ?? value.fromDay ?? today).slice(0, 2));
   const [year, month] = view as [number, number];
   const active = Boolean(value.fromDay || value.toDay);
 
   const openSheet = () => {
     setDraft(value);
+    setEditing("from");
     setView(parts(value.toDay ?? value.fromDay ?? today).slice(0, 2));
     setOpen(true);
   };
   const pick = (day: string) => {
     const { fromDay, toDay } = draft;
-    if (!fromDay || toDay) setDraft({ fromDay: day, toDay: undefined });
-    else if (day < fromDay) setDraft({ fromDay: day, toDay: fromDay });
-    else setDraft({ fromDay, toDay: day });
+    if (editing === "from") {
+      setDraft({ fromDay: day, toDay: toDay && toDay < day ? undefined : toDay });
+      setEditing("to");
+    } else if (fromDay && day < fromDay) {
+      setDraft({ fromDay: day, toDay: fromDay });
+    } else {
+      setDraft({ fromDay, toDay: day });
+    }
+  };
+  const focusEnd = (end: End) => {
+    setEditing(end);
+    const day = end === "from" ? draft.fromDay : draft.toDay;
+    if (day) setView(parts(day).slice(0, 2));
   };
   const step = (delta: number) => {
     const index = year * 12 + (month - 1) + delta;
     setView([Math.floor(index / 12), (index % 12) + 1]);
   };
-  const apply = (next: DayRangeValue) => {
-    onChange(next.fromDay && !next.toDay ? { fromDay: next.fromDay, toDay: next.fromDay } : next);
+  /** A single filled end is a one-day range. */
+  const apply = ({ fromDay, toDay }: DayRangeValue) => {
+    const one = fromDay ?? toDay;
+    onChange(one ? { fromDay: fromDay ?? one, toDay: toDay ?? one } : {});
     setOpen(false);
   };
   const preset = (days: number) => apply({ fromDay: shift(today, -(days - 1)), toDay: today });
@@ -115,6 +132,31 @@ export function DateRangeField({ label, value, onChange, today, testID }: DateRa
       </Pressable>
 
       <BottomSheet visible={open} title={label} onClose={() => setOpen(false)}>
+        <View style={styles.ends}>
+          {(["from", "to"] as const).map((end) => {
+            const day = end === "from" ? draft.fromDay : draft.toDay;
+            const on = editing === end;
+            return (
+              <Pressable
+                key={end}
+                accessibilityRole="button"
+                accessibilityLabel={`${end === "from" ? "From" : "To"}: ${day ? short(day) : "not set"}`}
+                accessibilityHint="Then pick a day in the calendar"
+                accessibilityState={{ selected: on }}
+                onPress={() => focusEnd(end)}
+                testID={`range-${end}`}
+                style={[styles.end, on && styles.endOn]}
+              >
+                <Text variant="caption" tone="muted">
+                  {end === "from" ? "From" : "To"}
+                </Text>
+                <Text variant="label" style={day ? styles.on : styles.off}>
+                  {day ? short(day) : "Pick a day"}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
         <View style={styles.presets}>
           {[
             ["Today", 1],
@@ -182,7 +224,7 @@ export function DateRangeField({ label, value, onChange, today, testID }: DateRa
           })}
         </View>
         <Text variant="caption" tone="muted">
-          {draft.fromDay ? describeRange(draft) : "Tap a first day, then a last day."} · plant time
+          Days are in plant time.
         </Text>
         <View style={styles.footer}>
           <Button
@@ -195,7 +237,7 @@ export function DateRangeField({ label, value, onChange, today, testID }: DateRa
           <Button
             label="Apply"
             size="desk"
-            disabled={!draft.fromDay}
+            disabled={!draft.fromDay && !draft.toDay}
             onPress={() => apply(draft)}
             testID="range-apply"
           />
@@ -223,6 +265,20 @@ const styles = StyleSheet.create({
   buttonActive: { borderColor: palette.ink },
   on: { color: palette.ink },
   off: { color: palette.ink2, fontFamily: fonts.medium },
+  ends: { flexDirection: "row", gap: space[2] },
+  end: {
+    flex: 1,
+    gap: 2,
+    minHeight: touch.desk,
+    justifyContent: "center",
+    paddingHorizontal: space[3],
+    paddingVertical: space[2],
+    borderRadius: radii.card,
+    borderWidth: 1,
+    borderColor: palette.grey300,
+    backgroundColor: palette.surface,
+  },
+  endOn: { borderColor: palette.ink, borderWidth: 2 },
   presets: { flexDirection: "row", flexWrap: "wrap", gap: space[2] },
   monthRow: { flexDirection: "row", alignItems: "center", marginTop: space[2] },
   month: { flex: 1, textAlign: "center" },

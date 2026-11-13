@@ -14,7 +14,15 @@ import {
   RecordNotFound,
   TimelineSkeleton,
 } from "@/components/feedback";
-import { Card, Screen, ScreenHeader, Section, Stack, TabStrip, type TabOption } from "@/components/ui";
+import {
+  Card,
+  Screen,
+  ScreenHeader,
+  Section,
+  Stack,
+  TabStrip,
+  type TabOption,
+} from "@/components/ui";
 import { AssignActionWizard } from "@/features/actions";
 import { useSession } from "@/features/auth";
 import { useIncidentChanges } from "../hooks/useIncidentChanges";
@@ -24,18 +32,17 @@ import { ActionBar, type DialogKind } from "./ActionBar";
 import { EditIncidentDialog } from "./EditIncidentDialog";
 import { IncidentHeader } from "./IncidentHeader";
 import { LinkDuplicateDialog } from "./LinkDuplicateDialog";
+import { LinkedReportsThread } from "./LinkedReportsThread";
 import { StaleVersionDialog } from "./StaleVersionDialog";
 import { TimelineBar } from "./TimelineBar";
 import { ActionTab } from "./tabs/ActionTab";
-import { DuplicatesTab } from "./tabs/DuplicatesTab";
 import { HistoryTab } from "./tabs/HistoryTab";
 import { LocationTab } from "./tabs/LocationTab";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { PpeTab } from "./tabs/PpeTab";
 import { SimilarTab } from "./tabs/SimilarTab";
 
-type TabKey =
-  "overview" | "location" | "history" | "duplicates" | "thread" | "similar" | "action" | "ppe";
+type TabKey = "location" | "history" | "similar" | "action" | "ppe";
 
 const WORKFLOW_COPY: Record<
   TransitionEvent,
@@ -66,20 +73,21 @@ const WORKFLOW_COPY: Record<
   close: { title: "Close report", description: "Close this resolved report.", confirm: "Close" },
 };
 
-function availableTabs(incident: Incident, staff: boolean): TabOption<TabKey>[] {
+/** The report itself and its linked reports are always shown above; these are the extras. */
+function availableTabs(staff: boolean): TabOption<TabKey>[] {
   const tabs: TabOption<TabKey>[] = [
-    { value: "overview", label: "Overview" },
     { value: "location", label: "Location" },
     { value: "history", label: "History" },
   ];
-  if (incident.duplicateCount > 0) tabs.push({ value: "duplicates", label: "Duplicates" });
-  if (incident.cluster.isDuplicate) tabs.push({ value: "thread", label: "Thread" });
   if (staff) tabs.push({ value: "similar", label: "Similar" });
   tabs.push({ value: "action", label: "Action" }, { value: "ppe", label: "PPE" });
   return tabs;
 }
 
-/** Incident detail (guide §4.4): header, timeline bar, permission-driven actions, lazy tabs. */
+/**
+ * Incident detail (guide §4.4): the report itself first, then its linked reports as a thread,
+ * then the timeline bar, permission-driven actions and lazy tabs.
+ */
 export function IncidentDetailScreen() {
   const router = useRouter();
   const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
@@ -140,16 +148,16 @@ function Loaded({
   const changes = useIncidentChanges(incident);
   const ppe = useRunPpeScan();
   const timeline = useIncidentTimeline(incident.id);
-  const tabs = useMemo(() => availableTabs(incident, staff), [incident, staff]);
+  const tabs = useMemo(() => availableTabs(staff), [staff]);
   const current: TabKey = tabs.some((t) => t.value === tabParam)
     ? (tabParam as TabKey)
-    : "overview";
+    : "location";
   const [dialog, setDialog] = useState<DialogKind | null>(null);
   const [linkPreset, setLinkPreset] = useState<string | null>(null);
   const parent = useIncident(incident.cluster.parentIncidentId ?? "none");
 
   const setTab = (next: TabKey) =>
-    router.setParams({ tab: next === "overview" ? undefined : next });
+    router.setParams({ tab: next === "location" ? undefined : next });
   const refreshAll = () => {
     void queryClient.invalidateQueries({ queryKey: incidentKeys.detail(incident.id) });
   };
@@ -167,11 +175,26 @@ function Loaded({
       <IncidentHeader
         incident={incident}
         parentTitle={parent.data ? displayTitle(parent.data) : undefined}
-        onOpenDuplicates={() => setTab("duplicates")}
         onRetryTranscription={() => void changes.retryTranscription()}
         retrying={changes.retryingTranscription}
       />
       <MutationError error={changes.transcriptionError} />
+      <OverviewTab
+        incident={incident}
+        onRefreshMedia={refreshAll}
+        onOpenLocation={() => setTab("location")}
+      />
+      {incident.duplicateCount > 0 ? (
+        <LinkedReportsThread parentId={incident.id} mode="children" currentId={incident.id} />
+      ) : null}
+      {incident.cluster.isDuplicate && incident.cluster.parentIncidentId ? (
+        <LinkedReportsThread
+          parentId={incident.cluster.parentIncidentId}
+          mode="siblings"
+          currentId={incident.id}
+          parentTitle={parent.data ? displayTitle(parent.data) : undefined}
+        />
+      ) : null}
       {changes.assignedActionId ? (
         <Banner
           icon="check"
@@ -206,13 +229,6 @@ function Loaded({
       </Card>
       <TabStrip label="Report sections" tabs={tabs} value={current} onChange={setTab} />
 
-      {current === "overview" ? (
-        <OverviewTab
-          incident={incident}
-          onRefreshMedia={refreshAll}
-          onOpenLocation={() => setTab("location")}
-        />
-      ) : null}
       {current === "location" ? (
         <LocationTab
           incident={incident}
@@ -222,16 +238,6 @@ function Loaded({
         />
       ) : null}
       {current === "history" ? <HistoryTab incidentId={incident.id} /> : null}
-      {current === "duplicates" ? (
-        <DuplicatesTab parentId={incident.id} mode="duplicates" currentId={incident.id} />
-      ) : null}
-      {current === "thread" && incident.cluster.parentIncidentId ? (
-        <DuplicatesTab
-          parentId={incident.cluster.parentIncidentId}
-          mode="thread"
-          currentId={incident.id}
-        />
-      ) : null}
       {current === "similar" ? (
         <SimilarTab
           incidentId={incident.id}

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useEffect, useState } from "react";
+import { useRouter, type Href } from "expo-router";
 import { formatCount } from "@/lib/format";
 import { severityWeight } from "@/lib/labels";
 import { LIMITS } from "@/lib/validation";
@@ -8,34 +8,29 @@ import {
   Card,
   ChipGroup,
   Row,
-  Screen,
-  ScreenHeader,
   SelectField,
   Stack,
   Text,
   TextField,
+  Toggle,
 } from "@/components/ui";
 import { EmptyState, ErrorState, MapSkeleton } from "@/components/feedback";
-import { BlueprintMap, useBlueprint, useBlueprints } from "@/features/blueprints";
-import { useHeatmap } from "../hooks/useAnalytics";
 import {
-  clampCell,
-  parseAnalyticsParams,
-  toAnalyticsFilters,
-  toUrl,
-  type AnalyticsState,
-} from "../lib/params";
-import { AnalyticsFilterBar } from "./AnalyticsFilterBar";
-import { AnalyticsTabs } from "./AnalyticsTabs";
+  BlueprintMap,
+  HeatLegend,
+  useBlueprint,
+  useBlueprints,
+  type HeatMetric,
+} from "@/features/blueprints";
+import { useHeatmap } from "../hooks/useAnalytics";
+import { clampCell } from "../lib/params";
+import type { AnalyticsContentProps } from "./types";
 
 const PRESETS = ["25", "50", "100", "200"] as const;
 
 /** Risk heatmap (guide §4.9): a blueprint is required; areas are listed even with zero reports. */
-export function HeatmapScreen() {
+export function HeatmapContent({ state, filters, update }: AnalyticsContentProps) {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const state = useMemo(() => parseAnalyticsParams(params as never), [params]);
-  const filters = useMemo(() => toAnalyticsFilters(state), [state]);
   const list = useBlueprints();
   const blueprintId =
     state.blueprintId ?? list.data?.find((b) => b.isDefault)?.id ?? list.data?.[0]?.id;
@@ -43,6 +38,8 @@ export function HeatmapScreen() {
   const [selected, setSelected] = useState<string | null>(null);
   const [cellText, setCellText] = useState(String(state.cellSize));
   const [debounced, setDebounced] = useState(state.cellSize);
+  const [metric, setMetric] = useState<HeatMetric>("score");
+  const [showCounts, setShowCounts] = useState(false);
 
   // Debounce cell-size changes by 300 ms (guide §4.9).
   useEffect(() => {
@@ -54,8 +51,6 @@ export function HeatmapScreen() {
   }, [cellText]);
 
   const heat = useHeatmap({ ...filters, blueprintId: undefined }, blueprintId, debounced);
-  const update = (patch: Partial<AnalyticsState>) =>
-    router.setParams(toUrl({ ...state, ...patch }));
   const cellInvalid =
     cellText !== "" &&
     (Number(cellText) < 10 || Number(cellText) > 500 || !Number.isFinite(Number(cellText)));
@@ -67,13 +62,7 @@ export function HeatmapScreen() {
 
   const areas = heat.data?.areas ?? [];
   return (
-    <Screen
-      onRefresh={() => void heat.refetch()}
-      refreshing={heat.isRefetching}
-      testID="heatmap-screen"
-    >
-      <ScreenHeader title="Analytics" subtitle="Where reports cluster on the plant." />
-      <AnalyticsTabs current="heatmap" query={toUrl(state)} />
+    <Stack gap={4} testID="heatmap-screen">
       {list.data && list.data.length > 1 ? (
         <SelectField
           label="Blueprint"
@@ -104,8 +93,24 @@ export function HeatmapScreen() {
           testID="cell-size"
         />
       </Stack>
-      <AnalyticsFilterBar state={state} onChange={update} />
-
+      <Stack gap={2}>
+        <Text variant="label">Heat shows</Text>
+        <ChipGroup
+          label="Heat shows"
+          options={[
+            { value: "score", label: "Risk score" },
+            { value: "count", label: "Report count" },
+          ]}
+          value={metric}
+          onChange={setMetric}
+        />
+        <Toggle
+          label="Show numbers on the map"
+          value={showCounts}
+          onChange={setShowCounts}
+          testID="heat-numbers"
+        />
+      </Stack>
       {list.isError ? <ErrorState error={list.error} onRetry={() => void list.refetch()} /> : null}
       {list.data && list.data.length === 0 ? (
         <EmptyState icon="map" title="No blueprints yet" />
@@ -123,14 +128,21 @@ export function HeatmapScreen() {
             areas={plan.data.areas.map((a) => ({ ...a, highlighted: a.id === selected }))}
             cells={heat.data.cells}
             cellSize={heat.data.cellSize}
+            heatMetric={metric}
+            showHeatCounts={showCounts}
             onImageError={() => void plan.refetch()}
           />
           {heat.data.cells.length === 0 ? (
             <EmptyState icon="map" title="No pinned reports in this period" />
           ) : null}
+          <HeatLegend
+            lowLabel="Few reports"
+            highLabel={metric === "score" ? "Highest risk" : "Most reports"}
+          />
           <Text variant="caption" tone="muted" testID="legend">
-            Weights: Low {severityWeight.LOW}, Medium {severityWeight.MEDIUM}, High{" "}
-            {severityWeight.HIGH}, Critical {severityWeight.CRITICAL}. Darker cells have more risk.
+            Reports that are close together add up, so crowded spots get darker. Risk weights: Low{" "}
+            {severityWeight.LOW}, Medium {severityWeight.MEDIUM}, High {severityWeight.HIGH},
+            Critical {severityWeight.CRITICAL}.
           </Text>
           <Text variant="caption" tone="muted">
             {formatCount(heat.data.totals.reports)} pinned reports on this blueprint. Reports
@@ -167,6 +179,6 @@ export function HeatmapScreen() {
           </Card>
         </Stack>
       ) : null}
-    </Screen>
+    </Stack>
   );
 }

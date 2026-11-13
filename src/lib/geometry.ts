@@ -61,6 +61,3 @@ export function polygonsOverlap(a: readonly Point[], b: readonly Point[]): boole
   }
   return false;
 }
-
-/** Natural image size -> blueprint pixel size (guide §4.11: locked to the image when present). */
-export const roundSize = (value: number): number => Math.max(1, Math.round(value));

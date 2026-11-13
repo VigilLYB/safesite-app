@@ -10,6 +10,4 @@ export const statusLabel: Record<IncidentStatus, string> = {
   CLOSED: "Closed",
 };
 
-export const NEEDS_REVIEW = "OPEN,VALIDATED";
 export const IN_PROGRESS = "APPROVED,ACTION_ASSIGNED";
-export const FINISHED = "RESOLVED,CLOSED,REJECTED";

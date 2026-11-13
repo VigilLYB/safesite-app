@@ -1,8 +1,6 @@
-import { View } from "react-native";
 import type { IncidentSummary } from "@/lib/api";
 import { displayTitle, formatRelative, shortId } from "@/lib/format";
-import { space } from "@/lib/theme";
-import { Badge, Button, Card, Row, Text } from "@/components/ui";
+import { Badge, Button, Card, Row, Stack, Text } from "@/components/ui";
 import { SeverityBadge, StatusPill } from "@/components/domain";
 
 export interface IncidentCardProps {
@@ -14,7 +12,10 @@ export interface IncidentCardProps {
   onOpenParent?: ((parentId: string) => void) | undefined;
 }
 
-/** One report in a list: reference, place, time, title, then severity, status and duplicate badges. */
+/**
+ * One report in a list. Top: reference, severity (right). Then title and place. Bottom: status,
+ * duplicate / "+N linked" badges, time (right).
+ */
 export function IncidentCard({
   incident,
   onPress,
@@ -22,35 +23,36 @@ export function IncidentCard({
   onOpenParent,
 }: IncidentCardProps) {
   const title = displayTitle(incident);
+  const linked = incident.duplicateCount;
   return (
     <Card
       onPress={() => onPress(incident)}
-      accessibilityLabel={`${title}. ${incident.severity.toLowerCase()} severity. ${incident.status.toLowerCase().replace("_", " ")}.`}
+      accessibilityLabel={`${title}. ${incident.severity.toLowerCase()} severity. ${incident.status.toLowerCase().replace("_", " ")}.${linked > 0 ? ` ${linked} linked report${linked === 1 ? "" : "s"}.` : ""}`}
       testID={`incident-${incident.id}`}
     >
-      <Row justify="space-between">
+      <Row justify="space-between" gap={2}>
         <Text variant="mono" tone="muted">
           {shortId(incident.id)}
         </Text>
+        <SeverityBadge severity={incident.severity} />
+      </Row>
+      <Stack gap={1}>
+        <Text variant="heading">{title}</Text>
+        <Text variant="caption" tone="muted">
+          {incident.areaName ?? "—"}
+          {showReporter ? ` · ${incident.reporter.fullName}` : ""}
+        </Text>
+      </Stack>
+      <Row justify="space-between" align="flex-end" gap={2}>
+        <Row gap={2} wrap style={{ flex: 1 }}>
+          <StatusPill status={incident.status} />
+          {incident.clusterParentId ? <Badge label="Duplicate" icon="link" /> : null}
+          {linked > 0 ? <Badge label={`+${linked}`} icon="link" /> : null}
+        </Row>
         <Text variant="caption" tone="muted">
           {formatRelative(incident.createdAt)}
         </Text>
       </Row>
-      <Text variant="heading">{title}</Text>
-      <Text variant="caption" tone="muted">
-        {incident.areaName ?? "—"}
-        {showReporter ? ` · ${incident.reporter.fullName}` : ""}
-      </Text>
-      <View style={{ paddingTop: space[1] }}>
-        <Row gap={2} wrap>
-          <SeverityBadge severity={incident.severity} />
-          <StatusPill status={incident.status} />
-          {incident.clusterParentId ? <Badge label="Duplicate" icon="link" /> : null}
-          {incident.duplicateCount > 0 ? (
-            <Badge label={`+${incident.duplicateCount} similar`} />
-          ) : null}
-        </Row>
-      </View>
       {incident.clusterParentId && onOpenParent ? (
         <Button
           label="Parent report"

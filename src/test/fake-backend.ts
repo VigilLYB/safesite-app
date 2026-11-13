@@ -841,6 +841,27 @@ export function createFakeBackend() {
         inc.status = "RESOLVED";
         addNode(inc, "RESOLVED", "Resolved", null, ["status"]);
       };
+      if (method === "PUT" && sub === "/assignee") {
+        if (!staff) return forbid();
+        const next = (body?.assigneeId as string | null | undefined) ?? null;
+        const target = next ? users.find((u) => u.id === next && u.isActive) : null;
+        if (next && !target)
+          return err(400, "VALIDATION_ERROR", "Assignee does not exist or is inactive");
+        if (next !== act.assigneeId) {
+          const from = users.find((u) => u.id === act.assigneeId)?.fullName ?? "nobody";
+          act.assigneeId = next;
+          const inc = incidents.get(act.incidentId)!;
+          addNode(
+            inc,
+            "ACTION_REASSIGNED",
+            "Reassigned Action",
+            actor,
+            [],
+            `Action "${act.title}" reassigned from ${from} to ${target?.fullName ?? "nobody (unassigned)"}`,
+          );
+        }
+        return json(200, actionDto(act));
+      }
       if (sub === "/complete") {
         if (act.milestones.length > 0)
           return err(422, "UNPROCESSABLE", "Complete the remaining milestones instead");
@@ -862,6 +883,18 @@ export function createFakeBackend() {
     if (path.startsWith("/v1/analytics/")) {
       if (!staff) return forbid();
       const all = [...incidents.values()];
+      if (path.endsWith("/trends")) {
+        return json(200, {
+          range: { from: query.get("from") ?? "", to: query.get("to") ?? "" },
+          bucket: "week",
+          points: all.map((r) => ({
+            period: "2026-11-09T00:00:00Z",
+            category: r.category ?? "Uncategorised",
+            severity: r.severity,
+            count: 1,
+          })),
+        });
+      }
       if (path.endsWith("/summary"))
         return json(200, {
           range: { from: query.get("from") ?? "", to: query.get("to") ?? "" },

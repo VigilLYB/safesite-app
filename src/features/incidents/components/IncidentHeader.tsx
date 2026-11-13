@@ -10,7 +10,6 @@ import { useSession } from "@/features/auth";
 export interface IncidentHeaderProps {
   incident: Incident;
   parentTitle: string | null | undefined;
-  onOpenDuplicates: () => void;
   onRetryTranscription: () => void;
   retrying: boolean;
 }
@@ -19,7 +18,6 @@ export interface IncidentHeaderProps {
 export function IncidentHeader({
   incident,
   parentTitle,
-  onOpenDuplicates,
   onRetryTranscription,
   retrying,
 }: IncidentHeaderProps) {
@@ -53,15 +51,6 @@ export function IncidentHeader({
           actionLabel="Open parent"
           onAction={() => router.push(`/incidents/${parentId}` as Href)}
           testID="duplicate-banner"
-        />
-      ) : null}
-      {incident.duplicateCount > 0 ? (
-        <Banner
-          icon="link"
-          message={`${incident.duplicateCount} similar report${incident.duplicateCount === 1 ? " is" : "s are"} linked to this one`}
-          actionLabel="View"
-          onAction={onOpenDuplicates}
-          testID="has-duplicates-banner"
         />
       ) : null}
       {viewingParent ? (

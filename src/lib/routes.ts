@@ -6,7 +6,7 @@ import type { Role } from "@/lib/api";
  * role's navigation looks like. The server still enforces every rule; this decides what to show.
  */
 export type RouteKey =
-  "report" | "incidents" | "actions" | "analytics" | "team" | "blueprints" | "account";
+  "report" | "incidents" | "actions" | "alerts" | "analytics" | "team" | "blueprints" | "account";
 
 export interface RouteDef {
   key: RouteKey;
@@ -48,6 +48,14 @@ export const routes: Record<RouteKey, RouteDef> = {
     icon: "tasks",
     roles: ALL,
   },
+  alerts: {
+    key: "alerts",
+    segment: "alerts",
+    path: "/alerts",
+    label: "Alerts",
+    icon: "bell",
+    roles: ALL,
+  },
   analytics: {
     key: "analytics",
     segment: "analytics",
@@ -85,11 +93,31 @@ export const routes: Record<RouteKey, RouteDef> = {
   },
 };
 
-/** Navigation order per role (guide §3.2). */
+/**
+ * Navigation order per role (guide §3.2). On a phone the web-only sections drop out, which leaves
+ * five tabs for every role with Report in the middle: the one action everyone takes.
+ */
 const NAV_ORDER: Record<Role, readonly RouteKey[]> = {
-  WORKER: ["incidents", "report", "actions", "account"],
-  SUPERVISOR: ["incidents", "report", "actions", "analytics", "team", "account"],
-  MANAGER: ["analytics", "incidents", "actions", "report", "team", "blueprints", "account"],
+  WORKER: ["incidents", "actions", "report", "alerts", "account"],
+  SUPERVISOR: ["incidents", "actions", "report", "alerts", "analytics", "team", "account"],
+  MANAGER: [
+    "analytics",
+    "incidents",
+    "actions",
+    "report",
+    "alerts",
+    "team",
+    "blueprints",
+    "account",
+  ],
+};
+
+/**
+ * The manager's phone bar swaps Report for Analytics in the middle: managers live in the numbers.
+ * Report is still one tap away: a button at the top right of every manager page (ReportHeaderButton).
+ */
+const PHONE_NAV: Partial<Record<Role, readonly RouteKey[]>> = {
+  MANAGER: ["incidents", "actions", "analytics", "alerts", "account"],
 };
 
 export function canAccess(role: Role | null | undefined, key: RouteKey): boolean {
@@ -103,8 +131,9 @@ export interface NavItem extends RouteDef {
 }
 
 export function navFor(role: Role, options: { compact?: boolean } = {}): NavItem[] {
-  return NAV_ORDER[role]
-    .filter((key) => !(options.compact && routes[key].webOnly))
+  const phone = options.compact ? PHONE_NAV[role] : undefined;
+  return (phone ?? NAV_ORDER[role])
+    .filter((key) => phone !== undefined || !(options.compact && routes[key].webOnly))
     .map((key) => {
       const def = routes[key];
       return {

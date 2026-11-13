@@ -54,16 +54,6 @@ export const noteSchema = (required: boolean) =>
     .max(LIMITS.note, `Keep the note under ${LIMITS.note} characters.`)
     .refine((value) => !required || value.length > 0, "A reason is required.");
 
-export const customFieldValueSchema = z.union([
-  z.string().max(LIMITS.customFieldValue),
-  z.number(),
-  z.boolean(),
-  z.null(),
-]);
-export const customFieldsSchema = z
-  .record(z.string().max(LIMITS.customFieldKey), customFieldValueSchema)
-  .refine((o) => Object.keys(o).length <= LIMITS.customFieldKeys, "At most 30 extra details.");
-
 export const createUserSchema = z.object({
   email,
   fullName: z.string().trim().min(1, "Enter a name.").max(LIMITS.name),
@@ -93,8 +83,6 @@ export const blueprintFormSchema = z.object({
 export const areaFormSchema = z.object({
   name: z.string().trim().min(1, "Enter a name.").max(LIMITS.name),
 });
-
-export const assignTitle = z.string().trim().min(1, "Enter a title.").max(LIMITS.title);
 
 export const isUuid = (value: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);

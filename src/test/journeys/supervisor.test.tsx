@@ -15,7 +15,7 @@ const pick = async (view: View, testID: string, optionText: string) => {
 };
 
 describe("Journey: supervisor triage", () => {
-  it("lands on Triage: OPEN only, duplicates hidden, server-side", async () => {
+  it("lands on New Incidents: OPEN only, duplicates hidden, server-side", async () => {
     be.seedIncident({ reporter: wid(), title: "Fresh" });
     be.seedIncident({ reporter: wid(), title: "Approved already", status: "APPROVED" });
     const view = await launch(be, { as: S, url: "/incidents" });
@@ -272,8 +272,38 @@ describe("Journey: supervisor assigns a corrective action", () => {
   });
 });
 
+describe("Journey: reassigning an action", () => {
+  it("staff change the assignee from the action page; the report's history records it", async () => {
+    const rec = be.seedIncident({ reporter: wid(), title: "Valve leak", status: "APPROVED" });
+    const view = await launch(be, { as: S, url: `/incidents/${rec.id}` });
+    await press(view, "action-assign");
+    await press(view, "assign-next");
+    await fireEvent.changeText(await view.findByTestId("assign-title"), "Isolate the line");
+    await press(view, "assign-next");
+    await press(view, "assign-next");
+    await press(view, "assign-confirm");
+    await waitFor(() => expect(be.actions.size).toBe(1));
+    const [action] = [...be.actions.values()];
+    await cleanup();
+
+    const detail = await launch(be, { as: S, url: `/actions/${action!.id}` });
+    await pick(detail, "reassign-picker", "Sana Shaikh");
+    await waitFor(() => expect(be.called("PUT", "/assignee")).toHaveLength(1));
+    const sana = be.userByEmail("contractor@plantx.demo")!.id;
+    expect(be.called("PUT", "/assignee")[0]?.body).toEqual({ assigneeId: sana });
+    expect(action!.assigneeId).toBe(sana);
+    expect(labels(rec).at(-1)).toBe("Reassigned Action");
+    expect(await detail.findByLabelText("Assignee: Sana Shaikh")).toBeTruthy();
+    await cleanup();
+
+    const worker = await launch(be, { as: "worker@plantx.demo", url: `/actions/${action!.id}` });
+    await worker.findByTestId("action-detail");
+    expect(worker.queryByTestId("reassign")).toBeNull(); // workers can't reassign
+  });
+});
+
 describe("Journey: duplicates, similar reports and PPE", () => {
-  it("links a report under a parent, then unlinks it from the parent's Duplicates tab", async () => {
+  it("links a report under a parent, then unlinks it from the parent's linked-reports thread", async () => {
     const parent = be.seedIncident({ reporter: wid(), title: "Original leak" });
     const child = be.seedIncident({ reporter: wid(), title: "Same leak again" });
     const view = await launch(be, { as: S, url: `/incidents/${child.id}` });
@@ -288,7 +318,7 @@ describe("Journey: duplicates, similar reports and PPE", () => {
     expect(await view.findByTestId("duplicate-banner")).toBeTruthy();
     await cleanup();
 
-    const parentView = await launch(be, { as: S, url: `/incidents/${parent.id}?tab=duplicates` });
+    const parentView = await launch(be, { as: S, url: `/incidents/${parent.id}` });
     await press(parentView, `unlink-${child.id}`);
     await waitFor(() => expect(child.clusterParentId).toBeNull());
     expect(be.called("DELETE", "/cluster")[0]?.body).toEqual({
@@ -302,7 +332,7 @@ describe("Journey: duplicates, similar reports and PPE", () => {
     const view = await launch(be, { as: S, url: `/incidents/${parent.id}` });
     expect(await view.findByTestId("link-reason")).toBeTruthy();
     expect(view.queryByTestId("action-link")).toBeNull(); // the reason, not a dead button
-    expect(await view.findByTestId("has-duplicates-banner")).toBeTruthy();
+    expect(await view.findByTestId("linked-reports")).toBeTruthy();
   });
 
   it("Similar shows AI scores as whole percentages", async () => {

@@ -1,7 +1,6 @@
 import type { Query } from "./client";
 
 /** Hierarchical key factories. Defaults never go in a key prefix: invalidation matches by prefix. */
-export const sessionKeys = { me: ["session", "me"] as const };
 export const healthKeys = { all: ["health"] as const };
 
 export const userKeys = {

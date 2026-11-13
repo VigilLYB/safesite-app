@@ -49,8 +49,6 @@ export function kindFromStatus(status: number): ApiErrorKind {
 
 export const isApiError = (error: unknown): error is ApiError => error instanceof ApiError;
 
-export const isThrottled = (error: unknown): boolean => isApiError(error) && error.status === 429;
-
 export const isStaleVersion = (error: unknown): boolean =>
   isApiError(error) && error.code === "STALE_VERSION";
 
